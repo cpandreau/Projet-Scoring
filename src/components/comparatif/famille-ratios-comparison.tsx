@@ -67,7 +67,7 @@ export function FamilleRatiosComparison({
             {positionSummary && (
               <span
                 className={cn(
-                  'rounded-full px-2 py-0.5 text-xs font-medium',
+                  'rounded-full px-2 py-0.5 font-medium text-xs',
                   positionSummary.color
                 )}
               >

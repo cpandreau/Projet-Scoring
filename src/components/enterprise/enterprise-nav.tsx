@@ -31,7 +31,7 @@ export function EnterpriseNav({ enterpriseId }: EnterpriseNavProps) {
             key={item.href}
             href={href}
             className={cn(
-              'flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4',
+              'flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 font-medium text-sm transition-colors sm:px-4',
               isActive
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:border-muted hover:text-foreground'

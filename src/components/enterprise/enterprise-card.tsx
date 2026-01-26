@@ -74,7 +74,7 @@ export const EnterpriseCard = memo(function EnterpriseCard({
     >
       {/* Checkbox */}
       {onSelect && (
-        <div className="absolute left-3 top-3 z-10">
+        <div className="absolute top-3 left-3 z-10">
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => onSelect(enterprise.id)}
@@ -84,7 +84,7 @@ export const EnterpriseCard = memo(function EnterpriseCard({
       )}
 
       {/* Actions dropdown */}
-      <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-md bg-card/80 p-1 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100">
+      <div className="absolute top-2 right-2 z-10 flex gap-1 rounded-md bg-card/80 p-1 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100">
         <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
           <Link
             href={`/enterprise/${enterprise.id}/score`}

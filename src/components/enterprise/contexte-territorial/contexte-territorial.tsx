@@ -37,7 +37,7 @@ import {
   getRegionName,
 } from '@/lib/utils/geo-mapping'
 
-import { SANTE_CONFIG, TENDANCE_CONFIG } from './config'
+import { SANTE_CONFIG } from './config'
 import type { ContexteTerritorialProps } from './contexte-territorial.types'
 import { generateInsights } from './insights-generator'
 import { ContexteTerritorialSkeleton } from './loading-skeleton'

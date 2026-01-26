@@ -132,7 +132,7 @@ export function RecentEnterprises({
               </EnterpriseLink>
 
               {/* Actions rapides au hover */}
-              <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1 rounded-md bg-card/80 p-1 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100">
+              <div className="absolute top-1/2 right-2 flex -translate-y-1/2 gap-1 rounded-md bg-card/80 p-1 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100">
                 <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
                   <EnterpriseLink
                     enterprise={enterprise}

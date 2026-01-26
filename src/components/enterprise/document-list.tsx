@@ -308,7 +308,7 @@ export function DocumentList({
   const documentsWithExtraction = useMemo(() => {
     return filteredDocuments.filter((doc) => {
       const extraction = extractions.get(doc.id)
-      return extraction && extraction.donnees
+      return extraction?.donnees
     })
   }, [filteredDocuments, extractions])
 

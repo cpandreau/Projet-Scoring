@@ -49,7 +49,7 @@ export const ArchiveCard = memo(function ArchiveCard({
     >
       {/* Checkbox */}
       {onSelect && (
-        <div className="absolute left-3 top-3 z-10">
+        <div className="absolute top-3 left-3 z-10">
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => onSelect(archive.id)}
@@ -59,7 +59,7 @@ export const ArchiveCard = memo(function ArchiveCard({
       )}
 
       {/* Actions dropdown */}
-      <div className="absolute right-2 top-2 z-10">
+      <div className="absolute top-2 right-2 z-10">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">

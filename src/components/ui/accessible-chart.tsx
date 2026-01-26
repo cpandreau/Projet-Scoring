@@ -21,9 +21,8 @@ export function AccessibleChart({ children, title, description, className }: Acc
     <div
       role="img"
       aria-label={`Graphique: ${title}`}
-      tabIndex={0}
       className={cn(
-        'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md',
+        'rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
         className
       )}
     >
