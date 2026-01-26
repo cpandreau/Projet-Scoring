@@ -1,14 +1,15 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { useExtraction } from "@/hooks";
-import type { ExtractionData, ValueWithSource } from "@/schemas/extraction.schema";
-import { EXTRACTION_SECTIONS } from "@/config/fields-labels.config";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Pencil,
+  RefreshCw,
+} from 'lucide-react'
+import { useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,38 +20,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Pencil, CheckCircle2, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
-import { ExtractionEdit } from "./extraction-edit";
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { EXTRACTION_SECTIONS } from '@/config/fields-labels.config'
+import { useExtraction } from '@/hooks'
+import type { ExtractionData, ValueWithSource } from '@/schemas/extraction.schema'
+import { ExtractionEdit } from './extraction-edit'
 
 interface ExtractionPreviewProps {
-  extractionId?: string;
-  enterpriseId?: string;
-  documentId?: string;
-  data: ExtractionData;
-  isValidated?: boolean;
-  defaultOpen?: boolean;
-  onDataUpdated?: () => void;
+  extractionId?: string
+  enterpriseId?: string
+  documentId?: string
+  data: ExtractionData
+  isValidated?: boolean
+  defaultOpen?: boolean
+  onDataUpdated?: () => void
 }
 
 // Vérifie si toutes les valeurs extraites sont null
 function areAllValuesNull(data: ExtractionData): boolean {
-  return Object.values(data).every((field) => (field as ValueWithSource).valeur === null);
+  return Object.values(data).every((field) => (field as ValueWithSource).valeur === null)
 }
 
 // Formate un nombre en euros avec séparateur de milliers
 function formatCurrency(value: number | null): string {
   if (value === null) {
-    return "Non trouvé";
+    return 'Non trouvé'
   }
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(value)
 }
 
 export function ExtractionPreview({
@@ -62,39 +66,39 @@ export function ExtractionPreview({
   defaultOpen = false,
   onDataUpdated,
 }: ExtractionPreviewProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [isEditing, setIsEditing] = useState(false);
-  const [localData, setLocalData] = useState(data);
-  const [localValidated, setLocalValidated] = useState(isValidated);
-  const { extracting, extract } = useExtraction();
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [isEditing, setIsEditing] = useState(false)
+  const [localData, setLocalData] = useState(data)
+  const [localValidated, setLocalValidated] = useState(isValidated)
+  const { extracting, extract } = useExtraction()
 
-  const canEdit = extractionId && enterpriseId;
-  const canReExtract = !!documentId;
-  const allNull = areAllValuesNull(localData);
+  const canEdit = extractionId && enterpriseId
+  const canReExtract = !!documentId
+  const allNull = areAllValuesNull(localData)
 
   const handleReExtract = async () => {
-    if (!documentId) return;
-    const result = await extract(documentId);
+    if (!documentId) return
+    const result = await extract(documentId)
     if (result.success && result.data) {
-      setLocalData(result.data);
-      setLocalValidated(false); // Réinitialise le statut de validation
-      onDataUpdated?.();
+      setLocalData(result.data)
+      setLocalValidated(false) // Réinitialise le statut de validation
+      onDataUpdated?.()
     }
-  };
+  }
 
   const handleSaved = () => {
-    onDataUpdated?.();
-  };
+    onDataUpdated?.()
+  }
 
   const handleValidated = () => {
-    setLocalValidated(true);
-    setIsEditing(false);
-    onDataUpdated?.();
-  };
+    setLocalValidated(true)
+    setIsEditing(false)
+    onDataUpdated?.()
+  }
 
   const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
+    setIsEditing(false)
+  }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -108,16 +112,12 @@ export function ExtractionPreview({
             <span>Données extraites</span>
             {localValidated && (
               <Badge variant="default" className="bg-green-600 hover:bg-green-600">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
+                <CheckCircle2 className="mr-1 h-3 w-3" />
                 Validé
               </Badge>
             )}
           </div>
-          {isOpen ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="pt-2">
@@ -134,10 +134,11 @@ export function ExtractionPreview({
         ) : (
           <div className="space-y-4 text-sm">
             {allNull && (
-              <div className="flex items-center gap-2 p-3 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950 rounded-md">
+              <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-amber-600 text-sm dark:bg-amber-950">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>
-                  Aucune donnée n&apos;a pu être extraite. Vérifiez que le document est une liasse fiscale lisible.
+                  Aucune donnée n&apos;a pu être extraite. Vérifiez que le document est une liasse
+                  fiscale lisible.
                 </span>
               </div>
             )}
@@ -154,12 +155,12 @@ export function ExtractionPreview({
                   >
                     {extracting ? (
                       <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                         Extraction...
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="h-3 w-3 mr-1" />
+                        <RefreshCw className="mr-1 h-3 w-3" />
                         Relancer l&apos;extraction
                       </>
                     )}
@@ -168,20 +169,15 @@ export function ExtractionPreview({
                 {canReExtract && localValidated && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={extracting}
-                        className="text-xs"
-                      >
+                      <Button variant="outline" size="sm" disabled={extracting} className="text-xs">
                         {extracting ? (
                           <>
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                             Extraction...
                           </>
                         ) : (
                           <>
-                            <RefreshCw className="h-3 w-3 mr-1" />
+                            <RefreshCw className="mr-1 h-3 w-3" />
                             Relancer l&apos;extraction
                           </>
                         )}
@@ -191,15 +187,13 @@ export function ExtractionPreview({
                       <AlertDialogHeader>
                         <AlertDialogTitle>Relancer l&apos;extraction ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Les données validées seront écrasées par une nouvelle extraction.
-                          Cette action ne peut pas être annulée.
+                          Les données validées seront écrasées par une nouvelle extraction. Cette
+                          action ne peut pas être annulée.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleReExtract}>
-                          Relancer
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleReExtract}>Relancer</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -211,7 +205,7 @@ export function ExtractionPreview({
                     onClick={() => setIsEditing(true)}
                     className="text-xs"
                   >
-                    <Pencil className="h-3 w-3 mr-1" />
+                    <Pencil className="mr-1 h-3 w-3" />
                     Modifier
                   </Button>
                 )}
@@ -222,44 +216,42 @@ export function ExtractionPreview({
               <div key={section.id} className="space-y-2">
                 {/* Séparateur visuel avec titre de section */}
                 <div className="flex items-center gap-3 pt-2">
-                  <h4 className="font-semibold text-xs text-foreground whitespace-nowrap">
+                  <h4 className="whitespace-nowrap font-semibold text-foreground text-xs">
                     {section.title}
                   </h4>
                   <div className="h-px flex-1 bg-border" />
                 </div>
 
-                <div className="border rounded-md divide-y">
+                <div className="divide-y rounded-md border">
                   {section.fields.map((fieldConfig) => {
-                    const fieldData = localData[fieldConfig.key] as ValueWithSource;
-                    const value = fieldData?.valeur;
-                    const caseSource = fieldData?.case_source;
-                    const isNull = value === null;
+                    const fieldData = localData[fieldConfig.key] as ValueWithSource
+                    const value = fieldData?.valeur
+                    const caseSource = fieldData?.case_source
+                    const isNull = value === null
                     return (
                       <div
                         key={fieldConfig.key}
-                        className="flex justify-between items-center px-3 py-2"
+                        className="flex items-center justify-between px-3 py-2"
                       >
-                        <span className="text-muted-foreground">
-                          {fieldConfig.label}
-                        </span>
+                        <span className="text-muted-foreground">{fieldConfig.label}</span>
                         <div className="text-right">
                           <span
                             className={
                               isNull
-                                ? "text-muted-foreground/50 italic"
-                                : "font-medium tabular-nums"
+                                ? 'text-muted-foreground/50 italic'
+                                : 'font-medium tabular-nums'
                             }
                           >
                             {formatCurrency(value)}
                           </span>
                           {!isNull && caseSource && (
-                            <span className="ml-2 text-xs text-muted-foreground">
+                            <span className="ml-2 text-muted-foreground text-xs">
                               — ({caseSource})
                             </span>
                           )}
                         </div>
                       </div>
-                    );
+                    )
                   })}
                 </div>
               </div>
@@ -273,7 +265,7 @@ export function ExtractionPreview({
                   onClick={() => setIsEditing(true)}
                   className="text-xs"
                 >
-                  <Pencil className="h-3 w-3 mr-1" />
+                  <Pencil className="mr-1 h-3 w-3" />
                   Modifier et valider
                 </Button>
               </div>
@@ -282,5 +274,5 @@ export function ExtractionPreview({
         )}
       </CollapsibleContent>
     </Collapsible>
-  );
+  )
 }

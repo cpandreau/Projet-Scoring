@@ -1,65 +1,86 @@
-"use client";
+'use client'
 
+import { HelpCircle } from 'lucide-react'
 import {
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  ResponsiveContainer,
   Cell,
   LabelList,
-} from "recharts";
-import type { YearScore } from "@/actions/score.actions";
-import { getScoreZone, getZoneColors } from "@/config/colors.config";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
+  ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import type { YearScore } from '@/actions/score.actions'
+import { AccessibleChart, CHART_ZONE_COLORS } from '@/components/ui/accessible-chart'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+  Tooltip as UITooltip,
+} from '@/components/ui/tooltip'
 
 interface ScoreEvolutionChartProps {
-  scoresParAnnee: YearScore[];
+  scoresParAnnee: YearScore[]
+}
+
+function getScoreZone(score: number): keyof typeof CHART_ZONE_COLORS {
+  if (score >= 8) return 'success'
+  if (score >= 6) return 'caution'
+  if (score >= 4) return 'warning'
+  return 'danger'
 }
 
 export function ScoreEvolutionChart({ scoresParAnnee }: ScoreEvolutionChartProps) {
   // Préparer les données pour le graphique
   const data = scoresParAnnee.map((yearScore) => {
-    const zone = getScoreZone(yearScore.score.scoreGlobal);
-    const colors = getZoneColors(zone);
+    const zone = getScoreZone(yearScore.score.scoreGlobal)
     return {
       annee: yearScore.annee.toString(),
       score: yearScore.score.scoreGlobal,
-      fill: colors.stroke,
-    };
-  });
+      zone,
+      color: CHART_ZONE_COLORS[zone],
+    }
+  })
 
   // Ne rien afficher si moins de 2 années
   if (data.length < 2) {
-    return null;
+    return null
   }
 
   // Calculer la variation entre la première et la dernière année
-  const firstScore = data[0].score;
-  const lastScore = data[data.length - 1].score;
-  const variation = lastScore - firstScore;
-  const variationPercent = firstScore !== 0
-    ? ((variation / Math.abs(firstScore)) * 100).toFixed(1)
-    : "0";
+  const firstScore = data[0].score
+  const lastScore = data[data.length - 1].score
+  const variation = lastScore - firstScore
+  const variationPercent =
+    firstScore !== 0 ? ((variation / Math.abs(firstScore)) * 100).toFixed(1) : '0'
+
+  // Générer la description pour les lecteurs d'écran
+  const evolutionText =
+    variation >= 0
+      ? `en hausse de ${variation.toFixed(1)} points (${variationPercent}%)`
+      : `en baisse de ${Math.abs(variation).toFixed(1)} points (${variationPercent}%)`
+
+  const description = `Évolution du score sur ${data.length} années, ${evolutionText}. ${data
+    .map((d) => `${d.annee}: ${d.score.toFixed(1)}/10`)
+    .join('. ')}.`
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between font-medium text-sm">
           <div className="flex items-center gap-1.5">
             <span>Évolution du score</span>
             <TooltipProvider>
-              <Tooltip>
+              <UITooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                  <button
+                    type="button"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label="Informations sur le calcul du score"
+                  >
                     <HelpCircle className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -68,57 +89,84 @@ export function ScoreEvolutionChart({ scoresParAnnee }: ScoreEvolutionChartProps
                     Ces scores sont calculés <strong>hors ratios d&apos;évolution</strong> pour
                     permettre une comparaison équitable entre les années.
                   </p>
-                  <p className="text-sm mt-1 text-muted-foreground">
+                  <p className="mt-1 text-muted-foreground text-sm">
                     Le score global inclut les ratios d&apos;évolution et reflète la santé complète.
                   </p>
                 </TooltipContent>
-              </Tooltip>
+              </UITooltip>
             </TooltipProvider>
           </div>
-          <span className={`text-xs font-normal ${variation >= 0 ? "text-green-600" : "text-red-600"}`}>
-            {variation >= 0 ? "+" : ""}{variation.toFixed(1)} pts ({variationPercent}%)
+          <span
+            className={`font-normal text-xs ${variation >= 0 ? 'text-green-600' : 'text-red-600'}`}
+          >
+            {variation >= 0 ? '+' : ''}
+            {variation.toFixed(1)} pts ({variationPercent}%)
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-48">
+        <AccessibleChart title="Évolution du score" description={description} className="h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+            <BarChart
+              data={data}
+              margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
+              accessibilityLayer
+            >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey="annee"
-                tick={{ fill: "currentColor", fontSize: 12 }}
+                tick={{ fill: 'currentColor', fontSize: 12 }}
+                tickLine={{ stroke: 'currentColor' }}
+                axisLine={{ stroke: 'currentColor' }}
                 className="text-muted-foreground"
               />
               <YAxis
                 domain={[0, 10]}
-                tick={{ fill: "currentColor", fontSize: 11 }}
+                tick={{ fill: 'currentColor', fontSize: 11 }}
+                tickLine={{ stroke: 'currentColor' }}
+                axisLine={{ stroke: 'currentColor' }}
                 className="text-muted-foreground"
                 tickCount={6}
               />
-              <Bar
-                dataKey="score"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={60}
-              >
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length > 0) {
+                    const item = payload[0].payload as (typeof data)[0]
+                    return (
+                      <div className="rounded-lg border bg-popover p-2 shadow-md">
+                        <p className="font-medium text-popover-foreground text-sm">
+                          Année {item.annee}
+                        </p>
+                        <p className="text-sm" style={{ color: item.color }}>
+                          Score: {item.score.toFixed(1)}/10
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+              />
+              <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={60}>
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
                 <LabelList
                   dataKey="score"
                   position="top"
-                  formatter={(value) => typeof value === "number" ? value.toFixed(1) : value}
-                  className="fill-foreground text-xs font-medium"
+                  formatter={(value) =>
+                    typeof value === 'number' ? value.toFixed(1) : String(value)
+                  }
+                  className="fill-foreground font-medium text-xs"
                 />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </AccessibleChart>
         {/* Légende explicative */}
-        <p className="text-[10px] text-muted-foreground text-center mt-2">
+        <p className="mt-2 text-center text-[10px] text-muted-foreground">
           Scores par exercice (hors évolution, comparables entre années)
         </p>
       </CardContent>
     </Card>
-  );
+  )
 }

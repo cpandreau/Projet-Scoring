@@ -1,79 +1,133 @@
-"use server";
+'use server'
 
-import {
-  comparerAuSecteur,
-  type SectorComparisonResult,
-} from "@/lib/api/sector-comparison";
-import { calculateEnterpriseScore } from "./score.actions";
-import { getEnterpriseById } from "@/repositories/enterprise.repository";
+import { comparerAuSecteur, type SectorComparisonResult } from '@/lib/api/sector-comparison'
+import type { ScoreResult } from '@/lib/ratios'
+import { getEnterpriseById } from '@/repositories/enterprise.repository'
+import type { ExtractionData } from '@/schemas/extraction.schema'
+import { calculateEnterpriseScore, type YearScore } from './score.actions'
+
+// --- Types internes ---
+
+interface RatiosExtractionResult {
+  ratios: Record<string, number | null>
+  chiffreAffaires: number
+}
+
+// --- Helper functions pour réduire la complexité cognitive ---
+
+function createEmptyResult(
+  codeNaf: string,
+  anneesDisponibles: number[],
+  error: string
+): SectorComparisonResult {
+  return {
+    classeNaf: codeNaf,
+    classeCA: '',
+    exerciceEntreprise: 0,
+    exerciceSecteur: '',
+    cohorte: 0,
+    anneesDisponibles,
+    comparisons: [],
+    loading: false,
+    error,
+  }
+}
+
+function extractChiffreAffaires(caField: ExtractionData['chiffre_affaires'] | undefined): number {
+  if (!caField) return 0
+  if (typeof caField === 'number') return caField
+  if (typeof caField === 'object' && 'valeur' in caField) {
+    return caField.valeur ?? 0
+  }
+  return 0
+}
+
+function extractRatiosFromScore(score: ScoreResult): Record<string, number | null> {
+  const ratios: Record<string, number | null> = {}
+  for (const [ratioId, detail] of Object.entries(score.detailRatios)) {
+    ratios[ratioId] = detail.valeur
+  }
+  return ratios
+}
+
+function getRatiosForYear(
+  scoreAnnee: YearScore | undefined,
+  fallbackScore: ScoreResult,
+  fallbackExtraction: ExtractionData | undefined
+): RatiosExtractionResult {
+  if (scoreAnnee) {
+    return {
+      ratios: extractRatiosFromScore(scoreAnnee.score),
+      chiffreAffaires: extractChiffreAffaires(scoreAnnee.extractionData?.chiffre_affaires),
+    }
+  }
+
+  return {
+    ratios: extractRatiosFromScore(fallbackScore),
+    chiffreAffaires: extractChiffreAffaires(fallbackExtraction?.chiffre_affaires),
+  }
+}
+
+function determineAnneeSelectionnee(
+  anneeExercice: number | undefined,
+  anneesDisponibles: number[]
+): number {
+  if (anneeExercice && anneesDisponibles.includes(anneeExercice)) {
+    return anneeExercice
+  }
+  return anneesDisponibles[0] || new Date().getFullYear() - 1
+}
+
+// --- Action principale simplifiée ---
 
 export async function getSectorComparison(
-  enterpriseId: string
+  enterpriseId: string,
+  anneeExercice?: number
 ): Promise<SectorComparisonResult | null> {
   try {
-    // Recuperer l'entreprise
-    const enterprise = await getEnterpriseById(enterpriseId);
+    const enterprise = await getEnterpriseById(enterpriseId)
     if (!enterprise) {
-      console.error("[SectorComparison] Enterprise not found");
-      return null;
+      console.error('[SectorComparison] Enterprise not found')
+      return null
     }
 
-    // Verifier que le code NAF est renseigne
     if (!enterprise.code_naf) {
-      return {
-        classeNaf: "",
-        classeCA: "",
-        exercice: "",
-        cohorte: 0,
-        comparisons: [],
-        loading: false,
-        error: "Code NAF non renseigne pour cette entreprise",
-      };
+      return createEmptyResult('', [], 'Code NAF non renseigné pour cette entreprise')
     }
 
-    // Calculer les ratios de l'entreprise
     const scoreResult = await calculateEnterpriseScore(enterpriseId, {
       saveToHistory: false,
-    });
+    })
+
+    const anneesDisponibles = scoreResult.anneesDisponibles || []
+
     if (!scoreResult.success || !scoreResult.score) {
-      return {
-        classeNaf: enterprise.code_naf,
-        classeCA: "",
-        exercice: "",
-        cohorte: 0,
-        comparisons: [],
-        loading: false,
-        error: "Impossible de calculer les ratios de l'entreprise",
-      };
+      return createEmptyResult(
+        enterprise.code_naf,
+        anneesDisponibles,
+        "Impossible de calculer les ratios de l'entreprise"
+      )
     }
 
-    // Extraire les valeurs des ratios depuis detailRatios
-    const ratiosEntreprise: Record<string, number | null> = {};
-    for (const [ratioId, detail] of Object.entries(scoreResult.score.detailRatios)) {
-      ratiosEntreprise[ratioId] = detail.valeur;
-    }
+    const anneeSelectionnee = determineAnneeSelectionnee(anneeExercice, anneesDisponibles)
 
-    // Recuperer le CA pour determiner la tranche
-    let chiffreAffaires = 0;
-    if (scoreResult.extractionData) {
-      const caField = scoreResult.extractionData.chiffre_affaires;
-      if (caField && typeof caField === "object" && "valeur" in caField) {
-        chiffreAffaires = caField.valeur ?? 0;
-      } else if (typeof caField === "number") {
-        chiffreAffaires = caField;
-      }
-    }
+    const scoreAnnee = scoreResult.scoresParAnnee?.find((s) => s.annee === anneeSelectionnee)
 
-    // Comparer au secteur
-    const comparison = await comparerAuSecteur(
-      ratiosEntreprise,
+    const { ratios, chiffreAffaires } = getRatiosForYear(
+      scoreAnnee,
+      scoreResult.score,
+      scoreResult.extractionData
+    )
+
+    return await comparerAuSecteur(
+      ratios,
       enterprise.code_naf,
-      chiffreAffaires
-    );
-
-    return comparison;
+      chiffreAffaires,
+      anneeSelectionnee,
+      anneesDisponibles
+    )
   } catch (error) {
-    console.error("[SectorComparison] Error:", error);
-    return null;
+    console.error('[SectorComparison] Error:', error)
+    return null
   }
 }

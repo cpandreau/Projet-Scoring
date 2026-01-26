@@ -1,102 +1,122 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useCurrentEnterprise } from "@/hooks";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
-import { Building, BarChart3, Info, FileText, Loader2, LayoutDashboard } from "lucide-react";
-import { ThemeToggle } from "./theme-toggle";
+  BarChart3,
+  Building,
+  FileText,
+  Info,
+  LayoutDashboard,
+  Loader2,
+  MapPin,
+  Scale,
+} from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { useCurrentEnterprise } from '@/hooks'
+import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+import { GlobalSearch } from './global-search'
+import { ThemeToggle } from './theme-toggle'
 
 interface SidebarProps {
-  email: string;
+  email: string
 }
 
 interface SidebarContentProps extends SidebarProps {
-  onNavigate?: () => void;
+  onNavigate?: () => void
 }
 
 function getInitials(email: string): string {
-  const parts = email.split("@")[0].split(/[._-]/);
+  const parts = email.split('@')[0].split(/[._-]/)
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return email.slice(0, 2).toUpperCase();
+  return email.slice(0, 2).toUpperCase()
 }
 
 function SidebarContent({ email, onNavigate }: SidebarContentProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const supabase = createClient();
-  const { enterprise, enterpriseId, loading } = useCurrentEnterprise();
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+  const { enterprise, enterpriseId, loading } = useCurrentEnterprise()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
-
-  // Tab actuel (pour la page entreprise)
-  const currentTab = searchParams.get("tab") || "informations";
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   // Détermine si le score est disponible (statut "valide" ou "analyse")
-  const isScoreAvailable = enterprise?.statut === "valide" || enterprise?.statut === "analyse";
+  const isScoreAvailable = enterprise?.statut === 'valide' || enterprise?.statut === 'analyse'
 
-  // Liens pour l'entreprise en cours (utilise ?tab= au lieu de pages séparées)
+  // Liens pour l'entreprise en cours (routes imbriquées Next.js)
   const enterpriseLinks = enterpriseId
     ? [
         {
-          name: "Informations",
-          href: `/enterprise/${enterpriseId}`,
+          name: 'Informations',
+          href: `/enterprise/${enterpriseId}/informations`,
           icon: Info,
-          tab: "informations",
+          segment: 'informations',
         },
         {
-          name: "Documents",
-          href: `/enterprise/${enterpriseId}?tab=documents`,
+          name: 'Documents',
+          href: `/enterprise/${enterpriseId}/documents`,
           icon: FileText,
-          tab: "documents",
+          segment: 'documents',
         },
         {
-          name: "Score",
-          href: `/enterprise/${enterpriseId}?tab=score`,
+          name: 'Score',
+          href: `/enterprise/${enterpriseId}/score`,
           icon: BarChart3,
-          tab: "score",
-          badge: !isScoreAvailable ? "Indisponible" : null,
+          segment: 'score',
+          badge: !isScoreAvailable ? 'Indisponible' : null,
           disabled: !isScoreAvailable,
         },
+        {
+          name: 'Comparatif',
+          href: `/enterprise/${enterpriseId}/comparatif`,
+          icon: Scale,
+          segment: 'comparatif',
+          badge: !isScoreAvailable ? 'Indisponible' : null,
+          disabled: !isScoreAvailable,
+        },
+        {
+          name: 'Contexte',
+          href: `/enterprise/${enterpriseId}/contexte`,
+          icon: MapPin,
+          segment: 'contexte',
+        },
       ]
-    : [];
+    : []
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="p-6">
         <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">D</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <span className="font-bold text-primary-foreground text-sm">D</span>
           </div>
           <span className="font-semibold text-lg">Défaillantomètre</span>
         </Link>
+      </div>
+
+      {/* Recherche globale */}
+      <div className="px-4 pb-4">
+        <GlobalSearch />
       </div>
 
       <Separator />
 
       {/* Navigation principale */}
       <div className="p-4">
-        <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <p className="mb-2 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
           Navigation
         </p>
         <nav className="space-y-1">
@@ -104,10 +124,10 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
             href="/dashboard"
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-              pathname === "/dashboard"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              'flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors',
+              pathname === '/dashboard'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
           >
             <LayoutDashboard className="h-4 w-4" />
@@ -117,10 +137,10 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
             href="/enterprise"
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-              pathname === "/enterprise" || (pathname.startsWith("/enterprise/") && !enterpriseId)
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              'flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors',
+              pathname === '/enterprise' || (pathname.startsWith('/enterprise/') && !enterpriseId)
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
           >
             <Building className="h-4 w-4" />
@@ -133,21 +153,24 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
       {enterpriseId && (
         <>
           <Separator />
-          <div className="p-4 flex-1">
-            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="flex-1 p-4">
+            <p className="mb-2 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
               Entreprise en cours
             </p>
 
             {/* Nom de l'entreprise */}
-            <div className="px-3 py-2 mb-2">
+            <div className="mb-2 px-3 py-2">
               {loading ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm">Chargement...</span>
                 </div>
               ) : (
-                <p className="text-sm font-medium truncate" title={enterprise?.raison_sociale || "Sans nom"}>
-                  {enterprise?.raison_sociale || "Sans nom"}
+                <p
+                  className="truncate font-medium text-sm"
+                  title={enterprise?.raison_sociale || 'Sans nom'}
+                >
+                  {enterprise?.raison_sociale || 'Sans nom'}
                 </p>
               )}
             </div>
@@ -155,28 +178,27 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
             {/* Liens de l'entreprise */}
             <nav className="space-y-1">
               {enterpriseLinks.map((item) => {
-                // Vérifie si on est sur la page entreprise et sur le bon tab
-                const isOnEnterprisePage = pathname === `/enterprise/${enterpriseId}`;
-                const isActive = isOnEnterprisePage && currentTab === item.tab;
-                const Icon = item.icon;
+                // Vérifie si le pathname correspond au segment de route
+                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                const Icon = item.icon
 
                 if (item.disabled) {
                   return (
                     <div
                       key={item.name}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground/50 cursor-not-allowed"
+                      className="flex cursor-not-allowed items-center justify-between gap-2 rounded-md px-3 py-2 text-muted-foreground/50 text-sm"
                     >
                       <div className="flex items-center gap-3">
                         <Icon className="h-4 w-4" />
                         {item.name}
                       </div>
                       {item.badge && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
                           {item.badge}
                         </Badge>
                       )}
                     </div>
-                  );
+                  )
                 }
 
                 return (
@@ -185,16 +207,16 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
                     href={item.href}
                     onClick={onNavigate}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      'flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors',
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <Icon className="h-4 w-4" />
                     {item.name}
                   </Link>
-                );
+                )
               })}
             </nav>
           </div>
@@ -206,48 +228,38 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
 
         {/* User section */}
         <div className="p-4">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="mb-3 flex items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                 {getInitials(email)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{email}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-sm">{email}</p>
             </div>
             <ThemeToggle />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={handleLogout}
-          >
+          <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
             Déconnexion
           </Button>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export function Sidebar({ email }: SidebarProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
 
   return (
     <>
-      {/* Mobile trigger */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b px-4 py-3">
+      {/* Mobile header */}
+      <header className="fixed top-0 right-0 left-0 z-40 border-b bg-background px-4 py-3 lg:hidden">
         <div className="flex items-center justify-between">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm">
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -266,12 +278,12 @@ export function Sidebar({ email }: SidebarProps) {
           <span className="font-semibold">Défaillantomètre</span>
           <div className="w-20" /> {/* Spacer for centering */}
         </div>
-      </div>
+      </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-card border-r">
+      <aside className="hidden border-r bg-card lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <SidebarContent email={email} />
       </aside>
     </>
-  );
+  )
 }

@@ -1,89 +1,86 @@
-"use server";
+'use server'
 
-import { revalidatePath } from "next/cache";
-import { generateText, Output } from "ai";
-import { createClient } from "@/lib/supabase/server";
-import { gemini } from "@/lib/gemini";
+import { generateText, Output } from 'ai'
+import { revalidatePath } from 'next/cache'
+import { getCaseDescription } from '@/config/cerfa-mapping.config'
+import { getPromptForLiasse, isValidTypeLiasse } from '@/config/prompts'
+import { gemini } from '@/lib/gemini'
+import { createClient } from '@/lib/supabase/server'
 import {
-  extractionSchema,
   type ExtractionData,
-  type ValueWithSource,
+  extractionSchema,
   type NumericExtractionField,
-} from "@/schemas/extraction.schema";
-import { getCaseDescription } from "@/config/cerfa-mapping.config";
-import { getPromptForLiasse, isValidTypeLiasse } from "@/config/prompts";
-import type { TypeLiasse } from "@/types/document";
+  type ValueWithSource,
+} from '@/schemas/extraction.schema'
+import type { TypeLiasse } from '@/types/document'
 
 /**
  * Liste des champs à extraire avec leurs identifiants dans le schema
  */
 const FIELDS_TO_EXTRACT: NumericExtractionField[] = [
   // Bilan Actif
-  "actif_immobilise",
-  "stocks",
-  "creances_clients",
-  "disponibilites",
-  "actif_circulant",
+  'actif_immobilise',
+  'stocks',
+  'creances_clients',
+  'disponibilites',
+  'actif_circulant',
   // Bilan Passif
-  "capitaux_propres",
-  "dettes_financieres",
-  "dettes_fournisseurs",
-  "decouvert_bancaire",
-  "total_passif",
-  "dettes_fiscales_sociales",
-  "comptes_courants_associes",
-  "provisions_risques_charges",
+  'capitaux_propres',
+  'dettes_financieres',
+  'dettes_fournisseurs',
+  'decouvert_bancaire',
+  'total_passif',
+  'dettes_fiscales_sociales',
+  'comptes_courants_associes',
+  'provisions_risques_charges',
   // Compte de résultat - Produits
-  "chiffre_affaires",
-  "ventes_marchandises",
-  "production",
-  "subventions_exploitation",
-  "reprises_provisions",
-  "variation_stocks",
+  'chiffre_affaires',
+  'ventes_marchandises',
+  'production',
+  'subventions_exploitation',
+  'reprises_provisions',
+  'variation_stocks',
   // Compte de résultat - Charges
-  "achats_marchandises",
-  "achats_matieres_premieres",
-  "autres_charges_externes",
-  "impots_taxes",
-  "charges_personnel",
-  "charges_financieres",
-  "dotations_amortissements",
+  'achats_marchandises',
+  'achats_matieres_premieres',
+  'autres_charges_externes',
+  'impots_taxes',
+  'charges_personnel',
+  'charges_financieres',
+  'dotations_amortissements',
   // Résultats
-  "resultat_exploitation",
-  "resultat_net",
-];
+  'resultat_exploitation',
+  'resultat_net',
+]
 
 /**
  * Génère les instructions d'extraction pour chaque champ en utilisant la config CERFA
  */
 function generateFieldInstructions(): string {
-  return FIELDS_TO_EXTRACT
-    .map((fieldId) => {
-      const normalDesc = getCaseDescription(fieldId, false);
-      const simplifiedDesc = getCaseDescription(fieldId, true);
+  return FIELDS_TO_EXTRACT.map((fieldId) => {
+    const normalDesc = getCaseDescription(fieldId, false)
+    const simplifiedDesc = getCaseDescription(fieldId, true)
 
-      if (!normalDesc || !simplifiedDesc) return null;
+    if (!normalDesc || !simplifiedDesc) return null
 
-      const normalColonne = normalDesc.colonne
-        ? ` colonne ${normalDesc.colonne === 3 ? '"Net"' : normalDesc.colonne}`
-        : "";
-      const simplifiedColonne = simplifiedDesc.colonne
-        ? ` colonne ${simplifiedDesc.colonne}`
-        : "";
+    const normalColonne = normalDesc.colonne
+      ? ` colonne ${normalDesc.colonne === 3 ? '"Net"' : normalDesc.colonne}`
+      : ''
+    const simplifiedColonne = simplifiedDesc.colonne ? ` colonne ${simplifiedDesc.colonne}` : ''
 
-      return `${normalDesc.nom.toUpperCase()} :
-  - Liasse normale : case${normalDesc.cases.includes("+") ? "s" : ""} ${normalDesc.cases}${normalColonne} du ${normalDesc.formulaire}
-  - Liasse simplifiée : case${simplifiedDesc.cases.includes("+") ? "s" : ""} ${simplifiedDesc.cases}${simplifiedColonne}`;
-    })
+    return `${normalDesc.nom.toUpperCase()} :
+  - Liasse normale : case${normalDesc.cases.includes('+') ? 's' : ''} ${normalDesc.cases}${normalColonne} du ${normalDesc.formulaire}
+  - Liasse simplifiée : case${simplifiedDesc.cases.includes('+') ? 's' : ''} ${simplifiedDesc.cases}${simplifiedColonne}`
+  })
     .filter(Boolean)
-    .join("\n\n");
+    .join('\n\n')
 }
 
 /**
  * Génère le prompt système complet pour l'extraction
  */
 function generateExtractionPrompt(): string {
-  const fieldInstructions = generateFieldInstructions();
+  const fieldInstructions = generateFieldInstructions()
 
   return `Tu es un expert-comptable français spécialisé dans l'extraction de données des liasses fiscales (CERFA 2050-2059 et 2033).
 
@@ -228,71 +225,71 @@ EXEMPLE DE RÉPONSE LIASSE SIMPLIFIÉE - Cabinet comptable (CA services)
   "ventes_marchandises": { "valeur": 489164, ... },  ← FAUX ! C'est la production services
   "production": { "valeur": 0, ... },                ← FAUX ! Production = 489164
   "subventions_exploitation": { "valeur": 1581, ... } ← FAUX ! C'est "Autres produits" case 230
-}`;
+}`
 }
 
-const EXTRACTION_SYSTEM_PROMPT = generateExtractionPrompt();
+const EXTRACTION_SYSTEM_PROMPT = generateExtractionPrompt()
 
 export async function extractDocument(documentId: string): Promise<{
-  success?: boolean;
-  data?: ExtractionData;
-  error?: string;
+  success?: boolean
+  data?: ExtractionData
+  error?: string
 }> {
-  const supabase = await createClient();
+  const supabase = await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   if (!user) {
-    return { error: "Non authentifié" };
+    return { error: 'Non authentifié' }
   }
 
   // Récupérer le document avec vérification d'accès
   const { data: document, error: docError } = await supabase
-    .from("documents")
-    .select("*, dossiers!inner(id, user_id)")
-    .eq("id", documentId)
-    .single();
+    .from('documents')
+    .select('*, dossiers!inner(id, user_id)')
+    .eq('id', documentId)
+    .single()
 
   if (docError || !document) {
-    console.error("Error fetching document:", docError);
-    return { error: "Document non trouvé" };
+    console.error('Error fetching document:', docError)
+    return { error: 'Document non trouvé' }
   }
 
   if ((document.dossiers as { user_id: string }).user_id !== user.id) {
-    return { error: "Accès non autorisé" };
+    return { error: 'Accès non autorisé' }
   }
 
-  const enterpriseId = (document.dossiers as { id: string }).id;
+  const enterpriseId = (document.dossiers as { id: string }).id
 
   // Déterminer le prompt à utiliser selon le type de document
-  let extractionPrompt = EXTRACTION_SYSTEM_PROMPT; // Prompt générique par défaut
+  let extractionPrompt = EXTRACTION_SYSTEM_PROMPT // Prompt générique par défaut
 
-  if (document.type === "liasse_fiscale") {
+  if (document.type === 'liasse_fiscale') {
     // Pour les liasses fiscales, vérifier que type_liasse est défini
     if (!isValidTypeLiasse(document.type_liasse)) {
       return {
         error: "Veuillez sélectionner le type de liasse (normale ou simplifiée) avant l'extraction",
-      };
+      }
     }
     // Utiliser le prompt optimisé pour ce type de liasse
-    extractionPrompt = getPromptForLiasse(document.type_liasse as TypeLiasse);
+    extractionPrompt = getPromptForLiasse(document.type_liasse as TypeLiasse)
   }
 
   // Télécharger le PDF depuis Supabase Storage
   const { data: fileData, error: downloadError } = await supabase.storage
-    .from("documents")
-    .download(document.storage_path);
+    .from('documents')
+    .download(document.storage_path)
 
   if (downloadError || !fileData) {
-    console.error("Error downloading PDF:", downloadError);
-    return { error: "Erreur lors du téléchargement du document" };
+    console.error('Error downloading PDF:', downloadError)
+    return { error: 'Erreur lors du téléchargement du document' }
   }
 
   // Convertir le Blob en Buffer pour l'envoi à Gemini
-  const arrayBuffer = await fileData.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const arrayBuffer = await fileData.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
 
   try {
     // Extraire les données avec Gemini
@@ -303,85 +300,83 @@ export async function extractDocument(documentId: string): Promise<{
       }),
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: [
             {
-              type: "text",
+              type: 'text',
               text: extractionPrompt,
             },
             {
-              type: "file",
+              type: 'file',
               data: buffer,
-              mediaType: "application/pdf",
+              mediaType: 'application/pdf',
             },
             {
-              type: "text",
-              text: "Extrais les données comptables de ce document avec leurs cases sources CERFA.",
+              type: 'text',
+              text: 'Extrais les données comptables de ce document avec leurs cases sources CERFA.',
             },
           ],
         },
       ],
-    });
+    })
 
     if (!extractedData) {
-      return { error: "Aucune donnée extraite du document" };
+      return { error: 'Aucune donnée extraite du document' }
     }
 
     // Vérifier si des données existantes pour ce document
     const { data: existingData } = await supabase
-      .from("donnees_extraites")
-      .select("id")
-      .eq("document_id", documentId)
-      .single();
+      .from('donnees_extraites')
+      .select('id')
+      .eq('document_id', documentId)
+      .single()
 
     if (existingData) {
       // Mettre à jour les données existantes
       const { error: updateError } = await supabase
-        .from("donnees_extraites")
+        .from('donnees_extraites')
         .update({
           donnees: extractedData,
           is_validated: false,
         })
-        .eq("id", existingData.id);
+        .eq('id', existingData.id)
 
       if (updateError) {
-        console.error("Error updating extracted data:", updateError);
-        return { error: "Erreur lors de la mise à jour des données" };
+        console.error('Error updating extracted data:', updateError)
+        return { error: 'Erreur lors de la mise à jour des données' }
       }
     } else {
       // Insérer les nouvelles données
-      const { error: insertError } = await supabase
-        .from("donnees_extraites")
-        .insert({
-          document_id: documentId,
-          donnees: extractedData,
-          is_validated: false,
-        });
+      const { error: insertError } = await supabase.from('donnees_extraites').insert({
+        document_id: documentId,
+        donnees: extractedData,
+        is_validated: false,
+      })
 
       if (insertError) {
-        console.error("Error inserting extracted data:", insertError);
-        return { error: "Erreur lors de l'enregistrement des données" };
+        console.error('Error inserting extracted data:', insertError)
+        return { error: "Erreur lors de l'enregistrement des données" }
       }
     }
 
     // Mettre à jour le statut du dossier
     const { error: statusError } = await supabase
-      .from("dossiers")
-      .update({ statut: "extrait" })
-      .eq("id", enterpriseId);
+      .from('dossiers')
+      .update({ statut: 'extrait' })
+      .eq('id', enterpriseId)
 
     if (statusError) {
-      console.error("Error updating enterprise status:", statusError);
+      console.error('Error updating enterprise status:', statusError)
     }
 
     // Invalider le cache pour forcer le rechargement des données
-    revalidatePath(`/enterprise/${enterpriseId}`);
-    revalidatePath("/enterprise");
+    revalidatePath(`/enterprise/${enterpriseId}`)
+    revalidatePath('/enterprise')
 
-    return { success: true, data: extractedData };
+    return { success: true, data: extractedData }
   } catch (error) {
-    console.error("Error extracting data with Gemini:", error);
-    return { error: "Erreur lors de l'extraction des données" };
+    console.error('Error extracting data with Gemini:', error)
+    return { error: "Erreur lors de l'extraction des données" }
   }
 }
 
@@ -390,54 +385,54 @@ export async function updateExtraction(
   enterpriseId: string,
   donnees: ExtractionData
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
+  const supabase = await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   if (!user) {
-    return { error: "Non authentifié" };
+    return { error: 'Non authentifié' }
   }
 
   // Vérifier l'accès à l'extraction
   const { data: extraction, error: fetchError } = await supabase
-    .from("donnees_extraites")
-    .select("*, documents!inner(dossiers!inner(user_id))")
-    .eq("id", extractionId)
-    .single();
+    .from('donnees_extraites')
+    .select('*, documents!inner(dossiers!inner(user_id))')
+    .eq('id', extractionId)
+    .single()
 
   if (fetchError || !extraction) {
-    console.error("Error fetching extraction:", fetchError);
-    return { error: "Données extraites non trouvées" };
+    console.error('Error fetching extraction:', fetchError)
+    return { error: 'Données extraites non trouvées' }
   }
 
-  const userId = (extraction.documents as { dossiers: { user_id: string } }).dossiers.user_id;
+  const userId = (extraction.documents as { dossiers: { user_id: string } }).dossiers.user_id
   if (userId !== user.id) {
-    return { error: "Accès non autorisé" };
+    return { error: 'Accès non autorisé' }
   }
 
   // Vérifier si déjà validé
   if (extraction.is_validated) {
-    return { error: "Les données validées ne peuvent plus être modifiées" };
+    return { error: 'Les données validées ne peuvent plus être modifiées' }
   }
 
   // Mettre à jour les données
   const { error: updateError } = await supabase
-    .from("donnees_extraites")
+    .from('donnees_extraites')
     .update({ donnees })
-    .eq("id", extractionId);
+    .eq('id', extractionId)
 
   if (updateError) {
-    console.error("Error updating extraction:", updateError);
-    return { error: "Erreur lors de la mise à jour" };
+    console.error('Error updating extraction:', updateError)
+    return { error: 'Erreur lors de la mise à jour' }
   }
 
   // Invalider le cache
-  revalidatePath(`/enterprise/${enterpriseId}`);
-  revalidatePath("/enterprise");
+  revalidatePath(`/enterprise/${enterpriseId}`)
+  revalidatePath('/enterprise')
 
-  return { success: true };
+  return { success: true }
 }
 
 /**
@@ -478,91 +473,174 @@ function convertNullToZero(data: ExtractionData): ExtractionData {
     dotations_amortissements: { valeur: 0, case_source: null },
     reprises_provisions: { valeur: 0, case_source: null },
     variation_stocks: { valeur: 0, case_source: null },
-  };
+  }
 
   // Mettre à jour avec les valeurs réelles, convertissant null/undefined en 0
   for (const key of FIELDS_TO_EXTRACT) {
-    const field = data[key] as ValueWithSource;
+    const field = data[key] as ValueWithSource
     if (field) {
       // Convertir null, undefined, ou valeurs non numériques en 0
-      let valeur = 0;
+      let valeur = 0
       if (field.valeur !== null && field.valeur !== undefined) {
-        if (typeof field.valeur === "number" && !isNaN(field.valeur)) {
-          valeur = field.valeur;
+        if (typeof field.valeur === 'number' && !Number.isNaN(field.valeur)) {
+          valeur = field.valeur
         }
       }
       result[key] = {
         valeur,
         case_source: field.case_source,
-      };
+      }
     }
   }
 
-  return result;
+  return result
 }
 
 export async function validateExtraction(
   extractionId: string,
   enterpriseId: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await createClient();
+  const supabase = await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   if (!user) {
-    return { error: "Non authentifié" };
+    return { error: 'Non authentifié' }
   }
 
   // Vérifier l'accès à l'extraction
   const { data: extraction, error: fetchError } = await supabase
-    .from("donnees_extraites")
-    .select("*, documents!inner(dossiers!inner(id, user_id))")
-    .eq("id", extractionId)
-    .single();
+    .from('donnees_extraites')
+    .select('*, documents!inner(dossiers!inner(id, user_id))')
+    .eq('id', extractionId)
+    .single()
 
   if (fetchError || !extraction) {
-    console.error("Error fetching extraction:", fetchError);
-    return { error: "Données extraites non trouvées" };
+    console.error('Error fetching extraction:', fetchError)
+    return { error: 'Données extraites non trouvées' }
   }
 
-  const dossiers = extraction.documents as { dossiers: { id: string; user_id: string } };
+  const dossiers = extraction.documents as { dossiers: { id: string; user_id: string } }
   if (dossiers.dossiers.user_id !== user.id) {
-    return { error: "Accès non autorisé" };
+    return { error: 'Accès non autorisé' }
   }
 
   // Convertir les valeurs null en 0 avant validation
-  const donneesOriginales = extraction.donnees as ExtractionData;
-  const donneesNormalisees = convertNullToZero(donneesOriginales);
+  const donneesOriginales = extraction.donnees as ExtractionData
+  const donneesNormalisees = convertNullToZero(donneesOriginales)
 
   // Marquer comme validé avec les données normalisées
   const { error: updateError } = await supabase
-    .from("donnees_extraites")
+    .from('donnees_extraites')
     .update({
       donnees: donneesNormalisees,
       is_validated: true,
     })
-    .eq("id", extractionId);
+    .eq('id', extractionId)
 
   if (updateError) {
-    console.error("Error validating extraction:", updateError);
-    return { error: "Erreur lors de la validation" };
+    console.error('Error validating extraction:', updateError)
+    return { error: 'Erreur lors de la validation' }
   }
 
   // Mettre à jour le statut du dossier à "valide"
   const { error: statusError } = await supabase
-    .from("dossiers")
-    .update({ statut: "valide" })
-    .eq("id", enterpriseId);
+    .from('dossiers')
+    .update({ statut: 'valide' })
+    .eq('id', enterpriseId)
 
   if (statusError) {
-    console.error("Error updating enterprise status:", statusError);
+    console.error('Error updating enterprise status:', statusError)
   }
 
   // Invalider le cache pour forcer le rechargement des données
-  revalidatePath(`/enterprise/${enterpriseId}`);
-  revalidatePath("/enterprise");
+  revalidatePath(`/enterprise/${enterpriseId}`)
+  revalidatePath('/enterprise')
 
-  return { success: true };
+  return { success: true }
+}
+
+/**
+ * Valide en masse toutes les extractions non validées d'un dossier
+ */
+export async function bulkValidateExtractions(
+  enterpriseId: string,
+  extractionIds: string[]
+): Promise<{ success?: boolean; count?: number; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Non authentifié' }
+  }
+
+  // Vérifier l'accès au dossier
+  const { data: enterprise, error: enterpriseError } = await supabase
+    .from('dossiers')
+    .select('id, user_id')
+    .eq('id', enterpriseId)
+    .single()
+
+  if (enterpriseError || !enterprise) {
+    return { error: 'Dossier non trouvé' }
+  }
+
+  if (enterprise.user_id !== user.id) {
+    return { error: 'Accès non autorisé' }
+  }
+
+  // Récupérer toutes les extractions à valider
+  const { data: extractions, error: fetchError } = await supabase
+    .from('donnees_extraites')
+    .select('id, donnees')
+    .in('id', extractionIds)
+    .eq('is_validated', false)
+
+  if (fetchError) {
+    console.error('Error fetching extractions:', fetchError)
+    return { error: 'Erreur lors de la récupération des données' }
+  }
+
+  if (!extractions || extractions.length === 0) {
+    return { success: true, count: 0 }
+  }
+
+  // Valider chaque extraction avec normalisation des données
+  let validatedCount = 0
+  for (const extraction of extractions) {
+    const donneesNormalisees = convertNullToZero(extraction.donnees as ExtractionData)
+
+    const { error: updateError } = await supabase
+      .from('donnees_extraites')
+      .update({
+        donnees: donneesNormalisees,
+        is_validated: true,
+      })
+      .eq('id', extraction.id)
+
+    if (!updateError) {
+      validatedCount++
+    }
+  }
+
+  // Mettre à jour le statut du dossier à "valide"
+  const { error: statusError } = await supabase
+    .from('dossiers')
+    .update({ statut: 'valide' })
+    .eq('id', enterpriseId)
+
+  if (statusError) {
+    console.error('Error updating enterprise status:', statusError)
+  }
+
+  // Invalider le cache
+  revalidatePath(`/enterprise/${enterpriseId}`)
+  revalidatePath('/enterprise')
+
+  return { success: true, count: validatedCount }
 }

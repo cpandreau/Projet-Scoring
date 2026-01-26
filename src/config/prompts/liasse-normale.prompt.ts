@@ -219,4 +219,4 @@ POINTS D'ATTENTION
 2. Toujours prendre la colonne NET pour le bilan actif
 3. Ne pas confondre les numéros de formulaire avec les numéros de cases
 4. Vérifier les totaux : CA = ventes + production, Total passif = Capitaux propres + Dettes
-5. Les provisions et dotations peuvent avoir plusieurs lignes à additionner`;
+5. Les provisions et dotations peuvent avoir plusieurs lignes à additionner`

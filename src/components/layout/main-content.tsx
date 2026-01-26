@@ -1,9 +1,7 @@
-"use client";
-
-import { AppBreadcrumb } from "./breadcrumb";
+import { AppBreadcrumb } from './breadcrumb'
 
 interface MainContentProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export function MainContent({ children }: MainContentProps) {
@@ -12,5 +10,5 @@ export function MainContent({ children }: MainContentProps) {
       <AppBreadcrumb />
       {children}
     </>
-  );
+  )
 }

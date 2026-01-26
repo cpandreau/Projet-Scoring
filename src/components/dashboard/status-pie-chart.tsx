@@ -1,67 +1,74 @@
-"use client";
+'use client'
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { GlobalStats } from "@/repositories/stats.repository";
-import type { EnterpriseStatus } from "@/types";
-import { STATUT_LABELS } from "@/types";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { AccessibleChart, CHART_ZONE_COLORS, ChartTooltip } from '@/components/ui/accessible-chart'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { GlobalStats } from '@/repositories/stats.repository'
+import type { EnterpriseStatus } from '@/types'
+import { STATUT_LABELS } from '@/types'
 
 interface StatusPieChartProps {
-  enterprisesByStatus: GlobalStats["enterprisesByStatus"];
+  enterprisesByStatus: GlobalStats['enterprisesByStatus']
 }
 
 // Couleurs cohérentes avec les badges de statut
 const STATUS_COLORS: Record<EnterpriseStatus, string> = {
-  brouillon: "rgb(156, 163, 175)",      // gray-400
-  documents_uploades: "rgb(59, 130, 246)", // blue-500
-  extrait: "rgb(234, 179, 8)",          // yellow-500
-  valide: "rgb(34, 197, 94)",           // green-500
-  analyse: "rgb(168, 85, 247)",         // purple-500
-};
+  brouillon: CHART_ZONE_COLORS.neutral,
+  documents_uploades: CHART_ZONE_COLORS.info,
+  extrait: CHART_ZONE_COLORS.caution,
+  valide: CHART_ZONE_COLORS.success,
+  analyse: CHART_ZONE_COLORS.purple,
+}
 
 const STATUS_ORDER: EnterpriseStatus[] = [
-  "brouillon",
-  "documents_uploades",
-  "extrait",
-  "valide",
-  "analyse",
-];
+  'brouillon',
+  'documents_uploades',
+  'extrait',
+  'valide',
+  'analyse',
+]
 
 export function StatusPieChart({ enterprisesByStatus }: StatusPieChartProps) {
-  const data = STATUS_ORDER
-    .map((status) => ({
-      name: STATUT_LABELS[status],
-      value: enterprisesByStatus[status],
-      color: STATUS_COLORS[status],
-    }))
-    .filter((d) => d.value > 0);
+  const data = STATUS_ORDER.map((status) => ({
+    name: STATUT_LABELS[status],
+    value: enterprisesByStatus[status],
+    color: STATUS_COLORS[status],
+  })).filter((d) => d.value > 0)
 
-  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const total = data.reduce((sum, d) => sum + d.value, 0)
+
+  // Générer la description pour les lecteurs d'écran
+  const description = `Répartition par statut sur ${total} entreprise${total > 1 ? 's' : ''}. ${data
+    .map((d) => {
+      const percent = total > 0 ? Math.round((d.value / total) * 100) : 0
+      return `${d.name}: ${d.value} (${percent}%)`
+    })
+    .join('. ')}.`
 
   if (total === 0) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Répartition par statut</CardTitle>
+          <CardTitle className="font-medium text-sm">Répartition par statut</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+          <div className="flex h-48 items-center justify-center text-muted-foreground text-sm">
             Aucune entreprise
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Répartition par statut</CardTitle>
+        <CardTitle className="font-medium text-sm">Répartition par statut</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-48">
+        <AccessibleChart title="Répartition par statut" description={description} className="h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart accessibilityLayer>
               <Pie
                 data={data}
                 cx="50%"
@@ -76,19 +83,18 @@ export function StatusPieChart({ enterprisesByStatus }: StatusPieChartProps) {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                }}
-                formatter={(value, name) => {
-                  const numValue = typeof value === "number" ? value : 0;
-                  return [
-                    `${numValue} (${Math.round((numValue / total) * 100)}%)`,
-                    name,
-                  ];
-                }}
+                content={
+                  <ChartTooltip
+                    formatter={(value, name) => {
+                      const percent = total > 0 ? Math.round((value / total) * 100) : 0
+                      return (
+                        <span>
+                          {name}: {value} ({percent}%)
+                        </span>
+                      )
+                    }}
+                  />
+                }
               />
               <Legend
                 layout="vertical"
@@ -96,14 +102,12 @@ export function StatusPieChart({ enterprisesByStatus }: StatusPieChartProps) {
                 verticalAlign="middle"
                 iconType="circle"
                 iconSize={8}
-                formatter={(value) => (
-                  <span className="text-xs text-foreground">{value}</span>
-                )}
+                formatter={(value) => <span className="text-foreground text-xs">{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
+        </AccessibleChart>
       </CardContent>
     </Card>
-  );
+  )
 }

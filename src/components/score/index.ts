@@ -1,11 +1,4 @@
-export { ScoreGlobal } from "./score-global";
-export { ScoreFamille } from "./score-famille";
-export { ScoreRadar } from "./score-radar";
-export { ScoreDashboard } from "./score-dashboard";
-export { ScoreEvolutionChart } from "./score-evolution-chart";
-export { FamilleEvolutionTable } from "./famille-evolution-table";
-export { ScoreHistory } from "./score-history";
-export { ScoreHistoryChart } from "./score-history-chart";
-export { ScoreHistoryTable } from "./score-history-table";
-export { ScoreHistoryDetail } from "./score-history-detail";
-export { RatioDebug } from "./ratio-debug";
+// Composants exportés pour usage externe
+export { ScoreDashboard } from './score-dashboard'
+export { ScoreHistory } from './score-history'
+// Note: les autres composants sont utilisés en interne via imports relatifs

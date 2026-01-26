@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from 'sonner'
 
 /**
  * Affiche un toast de succès
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 export function showSuccess(message: string, description?: string) {
   toast.success(message, {
     description,
-  });
+  })
 }
 
 /**
@@ -15,7 +15,7 @@ export function showSuccess(message: string, description?: string) {
 export function showError(message: string, description?: string) {
   toast.error(message, {
     description,
-  });
+  })
 }
 
 /**
@@ -24,7 +24,7 @@ export function showError(message: string, description?: string) {
 export function showInfo(message: string, description?: string) {
   toast.info(message, {
     description,
-  });
+  })
 }
 
 /**
@@ -33,7 +33,7 @@ export function showInfo(message: string, description?: string) {
 export function showWarning(message: string, description?: string) {
   toast.warning(message, {
     description,
-  });
+  })
 }
 
 /**
@@ -41,7 +41,7 @@ export function showWarning(message: string, description?: string) {
  * @returns L'ID du toast pour pouvoir le mettre à jour
  */
 export function showLoading(message: string) {
-  return toast.loading(message);
+  return toast.loading(message)
 }
 
 /**
@@ -51,7 +51,7 @@ export function updateToSuccess(toastId: string | number, message: string, descr
   toast.success(message, {
     id: toastId,
     description,
-  });
+  })
 }
 
 /**
@@ -61,14 +61,14 @@ export function updateToError(toastId: string | number, message: string, descrip
   toast.error(message, {
     id: toastId,
     description,
-  });
+  })
 }
 
 /**
  * Ferme un toast spécifique
  */
 export function dismissToast(toastId?: string | number) {
-  toast.dismiss(toastId);
+  toast.dismiss(toastId)
 }
 
 /**
@@ -86,5 +86,5 @@ export function showWithAction(
       label: actionLabel,
       onClick: onAction,
     },
-  });
+  })
 }

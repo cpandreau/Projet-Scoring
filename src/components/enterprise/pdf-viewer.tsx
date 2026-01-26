@@ -1,69 +1,69 @@
-"use client";
+'use client'
 
-import { useState, useCallback } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import { Button } from "@/components/ui/button";
 import {
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  RotateCw,
   ZoomIn,
   ZoomOut,
-  RotateCw,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+} from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
+import { Button } from '@/components/ui/button'
 
 // Configuration du worker PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 interface PdfViewerProps {
-  url: string;
-  className?: string;
+  url: string
+  className?: string
 }
 
 export function PdfViewer({ url, className }: PdfViewerProps) {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number>(0)
+  const [pageNumber, setPageNumber] = useState<number>(1)
+  const [scale, setScale] = useState<number>(1.0)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setLoading(false);
-    setError(null);
-  }, []);
+    setNumPages(numPages)
+    setLoading(false)
+    setError(null)
+  }, [])
 
   const onDocumentLoadError = useCallback((error: Error) => {
-    console.error("Error loading PDF:", error);
-    setLoading(false);
-    setError("Impossible de charger le document PDF");
-  }, []);
+    console.error('Error loading PDF:', error)
+    setLoading(false)
+    setError('Impossible de charger le document PDF')
+  }, [])
 
   const goToPrevPage = () => {
-    setPageNumber((prev) => Math.max(prev - 1, 1));
-  };
+    setPageNumber((prev) => Math.max(prev - 1, 1))
+  }
 
   const goToNextPage = () => {
-    setPageNumber((prev) => Math.min(prev + 1, numPages));
-  };
+    setPageNumber((prev) => Math.min(prev + 1, numPages))
+  }
 
   const zoomIn = () => {
-    setScale((prev) => Math.min(prev + 0.25, 3.0));
-  };
+    setScale((prev) => Math.min(prev + 0.25, 3.0))
+  }
 
   const zoomOut = () => {
-    setScale((prev) => Math.max(prev - 0.25, 0.5));
-  };
+    setScale((prev) => Math.max(prev - 0.25, 0.5))
+  }
 
   const resetZoom = () => {
-    setScale(1.0);
-  };
+    setScale(1.0)
+  }
 
   return (
-    <div className={`flex flex-col h-full ${className || ""}`}>
+    <div className={`flex h-full flex-col ${className || ''}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/50">
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/50 p-2">
         {/* Navigation */}
         <div className="flex items-center gap-1">
           <Button
@@ -72,11 +72,13 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
             onClick={goToPrevPage}
             disabled={pageNumber <= 1 || loading}
             className="h-8 w-8"
+            aria-label="Page précédente"
           >
             <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Page précédente</span>
           </Button>
-          <span className="text-sm tabular-nums min-w-[80px] text-center">
-            {loading ? "..." : `${pageNumber} / ${numPages}`}
+          <span className="min-w-20 text-center text-sm tabular-nums">
+            {loading ? '...' : `${pageNumber} / ${numPages}`}
           </span>
           <Button
             variant="ghost"
@@ -84,8 +86,10 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
             onClick={goToNextPage}
             disabled={pageNumber >= numPages || loading}
             className="h-8 w-8"
+            aria-label="Page suivante"
           >
             <ChevronRight className="h-4 w-4" />
+            <span className="sr-only">Page suivante</span>
           </Button>
         </div>
 
@@ -97,8 +101,10 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
             onClick={zoomOut}
             disabled={scale <= 0.5 || loading}
             className="h-8 w-8"
+            aria-label="Réduire le zoom"
           >
             <ZoomOut className="h-4 w-4" />
+            <span className="sr-only">Réduire le zoom</span>
           </Button>
           <Button
             variant="ghost"
@@ -115,8 +121,10 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
             onClick={zoomIn}
             disabled={scale >= 3.0 || loading}
             className="h-8 w-8"
+            aria-label="Agrandir le zoom"
           >
             <ZoomIn className="h-4 w-4" />
+            <span className="sr-only">Agrandir le zoom</span>
           </Button>
           <Button
             variant="ghost"
@@ -124,9 +132,11 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
             onClick={resetZoom}
             disabled={loading}
             className="h-8 w-8"
+            aria-label="Réinitialiser le zoom"
             title="Réinitialiser le zoom"
           >
             <RotateCw className="h-4 w-4" />
+            <span className="sr-only">Réinitialiser le zoom</span>
           </Button>
         </div>
       </div>
@@ -134,7 +144,7 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
       {/* PDF Content */}
       <div className="flex-1 overflow-auto bg-muted/30">
         {error ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <AlertCircle className="h-8 w-8 text-destructive" />
             <p className="text-sm">{error}</p>
           </div>
@@ -145,7 +155,7 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={onDocumentLoadError}
               loading={
-                <div className="flex items-center justify-center h-64">
+                <div className="flex h-64 items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               }
@@ -156,7 +166,7 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
                 renderTextLayer={false}
                 renderAnnotationLayer={false}
                 loading={
-                  <div className="flex items-center justify-center h-64">
+                  <div className="flex h-64 items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 }
@@ -166,5 +176,5 @@ export function PdfViewer({ url, className }: PdfViewerProps) {
         )}
       </div>
     </div>
-  );
+  )
 }

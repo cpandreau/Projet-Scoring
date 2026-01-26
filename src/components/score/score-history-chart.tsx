@@ -1,165 +1,177 @@
-"use client";
+'use client'
 
-import { useMemo } from "react";
+import { useMemo } from 'react'
 import {
-  LineChart,
   Line,
-  XAxis,
-  YAxis,
+  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
-  ReferenceLine,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ScoreHistoryEntry } from "@/repositories/score-history.repository";
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { AccessibleChart, CHART_ZONE_COLORS } from '@/components/ui/accessible-chart'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { ScoreHistoryEntry } from '@/repositories/score-history.repository'
 
 interface ScoreHistoryChartProps {
-  history: ScoreHistoryEntry[];
+  history: ScoreHistoryEntry[]
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 8) return "rgb(34, 197, 94)"; // green-500
-  if (score >= 6) return "rgb(234, 179, 8)"; // yellow-500
-  if (score >= 4) return "rgb(249, 115, 22)"; // orange-500
-  return "rgb(239, 68, 68)"; // red-500
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-    year: "2-digit",
-  });
+function getScoreZone(score: number): keyof typeof CHART_ZONE_COLORS {
+  if (score >= 8) return 'success'
+  if (score >= 6) return 'caution'
+  if (score >= 4) return 'warning'
+  return 'danger'
 }
 
 interface ChartDataPoint {
-  date: string;
-  dateLabel: string;
-  score: number;
-  anneeExercice: number;
-  color: string;
+  date: string
+  anneeExercice: number
+  score: number
+  zone: keyof typeof CHART_ZONE_COLORS
+  color: string
 }
 
 export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
   const chartData = useMemo((): ChartDataPoint[] => {
-    // Trier par date (plus ancien en premier pour le graphique)
-    const sorted = [...history].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    // Trier par année d'exercice (plus ancien en premier)
+    const sorted = [...history].sort((a, b) => a.annee_exercice - b.annee_exercice)
 
-    return sorted.map((entry) => ({
-      date: entry.created_at,
-      dateLabel: formatDate(entry.created_at),
-      score: entry.score_global,
-      anneeExercice: entry.annee_exercice,
-      color: getScoreColor(entry.score_global),
-    }));
-  }, [history]);
+    return sorted.map((entry) => {
+      const zone = getScoreZone(entry.score_global)
+      return {
+        date: entry.created_at,
+        anneeExercice: entry.annee_exercice,
+        score: entry.score_global,
+        zone,
+        color: CHART_ZONE_COLORS[zone],
+      }
+    })
+  }, [history])
+
+  // Générer la description pour les lecteurs d'écran
+  const description = useMemo(() => {
+    if (history.length === 0) return 'Aucun historique de score disponible.'
+    if (history.length === 1) return 'Un seul calcul de score enregistré.'
+
+    const firstScore = chartData[0]
+    const lastScore = chartData[chartData.length - 1]
+    const evolution = lastScore.score - firstScore.score
+    const evolutionText =
+      evolution >= 0
+        ? `en hausse de ${evolution.toFixed(1)} points`
+        : `en baisse de ${Math.abs(evolution).toFixed(1)} points`
+
+    return `Évolution du score sur ${chartData.length} exercices, de ${firstScore.anneeExercice} à ${lastScore.anneeExercice}. Score ${evolutionText}. ${chartData.map((d) => `${d.anneeExercice}: ${d.score.toFixed(1)}/10`).join('. ')}.`
+  }, [chartData, history.length])
 
   if (history.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
-            Évolution du score
-          </CardTitle>
+          <CardTitle className="font-medium text-sm">Historique des scores</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+          <div className="flex h-48 items-center justify-center text-muted-foreground text-sm">
             Aucun historique disponible
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   if (history.length === 1) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
-            Évolution du score
-          </CardTitle>
+          <CardTitle className="font-medium text-sm">Historique des scores</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+          <div className="flex h-48 items-center justify-center text-muted-foreground text-sm">
             Un seul calcul enregistré. Recalculez le score pour voir l&apos;évolution.
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
-          Évolution du score
-        </CardTitle>
+        <CardTitle className="font-medium text-sm">Historique des scores</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-48">
+        <AccessibleChart title="Historique des scores" description={description} className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
               margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+              accessibilityLayer
             >
               <XAxis
-                dataKey="dateLabel"
-                tick={{ fill: "currentColor", fontSize: 10 }}
+                dataKey="anneeExercice"
+                tick={{ fill: 'currentColor', fontSize: 10 }}
+                tickLine={{ stroke: 'currentColor' }}
+                axisLine={{ stroke: 'currentColor' }}
                 className="text-muted-foreground"
-                tickLine={false}
-                axisLine={false}
               />
               <YAxis
                 domain={[0, 10]}
                 ticks={[0, 2, 4, 6, 8, 10]}
-                tick={{ fill: "currentColor", fontSize: 10 }}
+                tick={{ fill: 'currentColor', fontSize: 10 }}
+                tickLine={{ stroke: 'currentColor' }}
+                axisLine={{ stroke: 'currentColor' }}
                 className="text-muted-foreground"
-                tickLine={false}
-                axisLine={false}
                 width={25}
               />
               {/* Lignes de référence pour les zones */}
-              <ReferenceLine y={4} stroke="rgb(239, 68, 68)" strokeDasharray="3 3" strokeOpacity={0.3} />
-              <ReferenceLine y={6} stroke="rgb(234, 179, 8)" strokeDasharray="3 3" strokeOpacity={0.3} />
-              <ReferenceLine y={8} stroke="rgb(34, 197, 94)" strokeDasharray="3 3" strokeOpacity={0.3} />
+              <ReferenceLine
+                y={4}
+                stroke={CHART_ZONE_COLORS.danger}
+                strokeDasharray="3 3"
+                strokeOpacity={0.3}
+              />
+              <ReferenceLine
+                y={6}
+                stroke={CHART_ZONE_COLORS.caution}
+                strokeDasharray="3 3"
+                strokeOpacity={0.3}
+              />
+              <ReferenceLine
+                y={8}
+                stroke={CHART_ZONE_COLORS.success}
+                strokeDasharray="3 3"
+                strokeOpacity={0.3}
+              />
               <Tooltip
                 content={({ active, payload }) => {
                   if (active && payload && payload.length > 0) {
-                    const data = payload[0].payload as ChartDataPoint;
+                    const data = payload[0].payload as ChartDataPoint
                     return (
-                      <div className="bg-popover border rounded-lg p-2 shadow-md">
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(data.date).toLocaleDateString("fr-FR", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
-                        </p>
-                        <p className="font-semibold" style={{ color: data.color }}>
-                          Score: {data.score.toFixed(1)}/10
-                        </p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="rounded-lg border bg-popover p-2 shadow-md">
+                        <p className="font-medium text-popover-foreground text-sm">
                           Exercice {data.anneeExercice}
                         </p>
+                        <p className="text-sm" style={{ color: data.color }}>
+                          Score: {data.score.toFixed(1)}/10
+                        </p>
                       </div>
-                    );
+                    )
                   }
-                  return null;
+                  return null
                 }}
               />
               <Line
                 type="monotone"
                 dataKey="score"
-                stroke="hsl(var(--primary))"
+                stroke={CHART_ZONE_COLORS.info}
                 strokeWidth={2}
                 dot={({ cx, cy, payload }) => {
-                  const data = payload as ChartDataPoint;
+                  const data = payload as ChartDataPoint
                   return (
                     <circle
-                      key={data.date}
+                      key={data.anneeExercice}
                       cx={cx}
                       cy={cy}
                       r={5}
@@ -167,7 +179,7 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
                       stroke="white"
                       strokeWidth={2}
                     />
-                  );
+                  )
                 }}
                 activeDot={{
                   r: 7,
@@ -176,26 +188,38 @@ export function ScoreHistoryChart({ history }: ScoreHistoryChartProps) {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
-        <div className="flex justify-center gap-3 mt-2 text-xs text-muted-foreground">
+        </AccessibleChart>
+        <div className="mt-2 flex justify-center gap-3 text-muted-foreground text-xs">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: CHART_ZONE_COLORS.danger }}
+            />
             &lt;4
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-orange-500" />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: CHART_ZONE_COLORS.warning }}
+            />
             4-6
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-yellow-500" />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: CHART_ZONE_COLORS.caution }}
+            />
             6-8
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: CHART_ZONE_COLORS.success }}
+            />
             ≥8
           </span>
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

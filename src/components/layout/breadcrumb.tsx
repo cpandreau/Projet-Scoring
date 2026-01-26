@@ -1,24 +1,24 @@
-"use client";
+'use client'
 
-import { Fragment } from "react";
-import Link from "next/link";
-import { useBreadcrumb } from "@/hooks/use-breadcrumb";
+import { Home, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Fragment } from 'react'
 import {
-  Breadcrumb as BreadcrumbRoot,
-  BreadcrumbList,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
+  Breadcrumb as BreadcrumbRoot,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Home, Loader2 } from "lucide-react";
+} from '@/components/ui/breadcrumb'
+import { useBreadcrumb } from '@/hooks/use-breadcrumb'
 
 export function AppBreadcrumb() {
-  const { items, loading } = useBreadcrumb();
+  const { items, loading } = useBreadcrumb()
 
   // Ne pas afficher si aucun breadcrumb ou un seul élément (page d'accueil)
   if (items.length === 0) {
-    return null;
+    return null
   }
 
   return (
@@ -35,7 +35,7 @@ export function AppBreadcrumb() {
         </BreadcrumbItem>
 
         {items.map((item, index) => {
-          const isLast = index === items.length - 1;
+          const isLast = index === items.length - 1
 
           return (
             <Fragment key={item.href}>
@@ -67,9 +67,9 @@ export function AppBreadcrumb() {
                 )}
               </BreadcrumbItem>
             </Fragment>
-          );
+          )
         })}
       </BreadcrumbList>
     </BreadcrumbRoot>
-  );
+  )
 }

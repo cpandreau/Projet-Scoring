@@ -1,9 +1,16 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'standalone',
   outputFileTracingRoot: __dirname,
-  output: "standalone",
-};
 
-export default nextConfig;
+  // Activer le mode strict React (détecte les problèmes)
+  reactStrictMode: true,
+
+  // Optimisation des images
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
+}
+
+export default nextConfig

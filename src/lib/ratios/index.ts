@@ -1,42 +1,39 @@
 // Calcul des ratios
 export {
-  calculateRatios,
-  calculateIntermediates,
-  getIntermediates,
-  countCalculableRatios,
   type CalculatedRatios,
+  calculateIntermediates,
+  calculateRatios,
+  countCalculableRatios,
+  getIntermediates,
   type IntermediateAggregates,
-} from "./calculate";
-
-// Zonage des ratios
+} from './calculate'
+// Pertinence des ratios
 export {
-  getZone,
-  getZones,
-  getRatioWithZone,
-  countByZone,
-  type Zone,
-  type QuartileData,
-  type QuartilesMap,
-} from "./zone";
-
+  type ExcludedRatio,
+  filterRelevantRatioKeys,
+  isRatioRelevant,
+  type RelevanceCheck,
+  type RelevanceFilterResult,
+  shouldIncludeRatio,
+} from './relevance'
 // Calcul du score
 export {
   calculateScore,
-  interpretScore,
-  generateScoreSummary,
-  getWeakPoints,
-  getStrongPoints,
-  type RatioDetail,
   type FamilyScore,
+  generateScoreSummary,
+  getStrongPoints,
+  getWeakPoints,
+  interpretScore,
+  type RatioDetail,
   type ScoreResult,
-} from "./score";
-
-// Pertinence des ratios
+} from './score'
+// Zonage des ratios
 export {
-  isRatioRelevant,
-  filterRelevantRatioKeys,
-  shouldIncludeRatio,
-  type RelevanceCheck,
-  type ExcludedRatio,
-  type RelevanceFilterResult,
-} from "./relevance";
+  countByZone,
+  getRatioWithZone,
+  getZone,
+  getZones,
+  type QuartileData,
+  type QuartilesMap,
+  type Zone,
+} from './zone'

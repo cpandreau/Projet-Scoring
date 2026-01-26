@@ -81,6 +81,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Chart zone colors - Light theme */
+  --chart-danger: oklch(0.628 0.258 29.234);
+  --chart-warning: oklch(0.702 0.213 47.604);
+  --chart-caution: oklch(0.795 0.184 86.047);
+  --chart-success: oklch(0.723 0.219 149.579);
+  --chart-info: oklch(0.623 0.214 259.815);
+  --chart-purple: oklch(0.627 0.265 303.9);
+  --chart-neutral: oklch(0.551 0.027 264.364);
 }
 
 .dark {
@@ -115,6 +124,15 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Chart zone colors - Dark theme (légèrement plus lumineuses) */
+  --chart-danger: oklch(0.678 0.238 29.234);
+  --chart-warning: oklch(0.752 0.193 47.604);
+  --chart-caution: oklch(0.845 0.164 86.047);
+  --chart-success: oklch(0.773 0.199 149.579);
+  --chart-info: oklch(0.673 0.194 259.815);
+  --chart-purple: oklch(0.677 0.245 303.9);
+  --chart-neutral: oklch(0.601 0.027 264.364);
 }
 
 @layer base {

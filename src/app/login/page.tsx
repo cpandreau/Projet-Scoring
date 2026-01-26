@@ -1,11 +1,8 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -13,62 +10,65 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
 
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
-        });
-        if (error) throw error;
+        })
+        if (error) throw error
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-        });
-        if (error) throw error;
+        })
+        if (error) throw error
       }
-      router.push("/dashboard");
-      router.refresh();
+      router.push('/dashboard')
+      router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">
-            {isLogin ? "Connexion" : "Inscription"}
+          <CardTitle className="font-bold text-2xl">
+            {isLogin ? 'Connexion' : 'Inscription'}
           </CardTitle>
           <CardDescription>
             {isLogin
-              ? "Entrez vos identifiants pour accéder à votre compte"
-              : "Créez un compte pour commencer"}
+              ? 'Entrez vos identifiants pour accéder à votre compte'
+              : 'Créez un compte pour commencer'}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950 rounded-md">
+              <div className="rounded-md bg-red-50 p-3 text-red-500 text-sm dark:bg-red-950">
                 {error}
               </div>
             )}
@@ -98,25 +98,21 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading
-                ? "Chargement..."
-                : isLogin
-                  ? "Se connecter"
-                  : "S'inscrire"}
+              {loading ? 'Chargement...' : isLogin ? 'Se connecter' : "S'inscrire"}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
-              {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}
+            <p className="text-center text-muted-foreground text-sm">
+              {isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?'}
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
                 className="ml-1 text-primary hover:underline"
               >
-                {isLogin ? "S'inscrire" : "Se connecter"}
+                {isLogin ? "S'inscrire" : 'Se connecter'}
               </button>
             </p>
           </CardFooter>
         </form>
       </Card>
     </div>
-  );
+  )
 }

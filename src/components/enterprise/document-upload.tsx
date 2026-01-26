@@ -1,165 +1,161 @@
-"use client";
+'use client'
 
-import { useState, useRef, useCallback } from "react";
-import { useUploadDocuments, type FileWithMetadata } from "@/hooks";
-import { AVAILABLE_YEARS, DOCUMENT_TYPES, type DocumentType } from "@/types/document";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CheckCircle2, FileText, FileUp, Loader2, Upload, X } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { FileUp, FileText, X, Loader2, CheckCircle2, Upload } from "lucide-react";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select'
+import { type FileWithMetadata, useUploadDocuments } from '@/hooks'
+import { cn } from '@/lib/utils'
+import { AVAILABLE_YEARS, DOCUMENT_TYPES, type DocumentType } from '@/types/document'
 
 interface DocumentUploadProps {
-  enterpriseId: string;
+  enterpriseId: string
 }
 
 interface FilePreviewItem {
-  file: File;
-  annee: number | null;
-  type: DocumentType | null;
-  id: string; // Pour les animations
+  file: File
+  annee: number | null
+  type: DocumentType | null
+  id: string // Pour les animations
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / 1024 / 1024).toFixed(2)} Mo`;
+  if (bytes < 1024) return `${bytes} o`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`
+  return `${(bytes / 1024 / 1024).toFixed(2)} Mo`
 }
 
 export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
-  const { uploading, error, success, upload, clearMessages } = useUploadDocuments(enterpriseId);
-  const [previewFiles, setPreviewFiles] = useState<FilePreviewItem[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [justDropped, setJustDropped] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploading, error, success, upload, clearMessages } = useUploadDocuments(enterpriseId)
+  const [previewFiles, setPreviewFiles] = useState<FilePreviewItem[]>([])
+  const [isDragging, setIsDragging] = useState(false)
+  const [justDropped, setJustDropped] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFilesSelect = useCallback((files: FileList | null) => {
-    clearMessages();
-    setValidationError(null);
+  const handleFilesSelect = useCallback(
+    (files: FileList | null) => {
+      clearMessages()
+      setValidationError(null)
 
-    if (!files || files.length === 0) return;
+      if (!files || files.length === 0) return
 
-    const newPreviewItems: FilePreviewItem[] = [];
-    const invalidFiles: string[] = [];
+      const newPreviewItems: FilePreviewItem[] = []
+      const invalidFiles: string[] = []
 
-    Array.from(files).forEach((file) => {
-      if (file.type === "application/pdf") {
-        newPreviewItems.push({
-          file,
-          annee: null,
-          type: null,
-          id: `${file.name}-${Date.now()}-${Math.random()}`,
-        });
-      } else {
-        invalidFiles.push(file.name);
+      Array.from(files).forEach((file) => {
+        if (file.type === 'application/pdf') {
+          newPreviewItems.push({
+            file,
+            annee: null,
+            type: null,
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+          })
+        } else {
+          invalidFiles.push(file.name)
+        }
+      })
+
+      if (invalidFiles.length > 0) {
+        setValidationError(`Fichiers non PDF ignorés : ${invalidFiles.join(', ')}`)
       }
-    });
 
-    if (invalidFiles.length > 0) {
-      setValidationError(`Fichiers non PDF ignorés : ${invalidFiles.join(", ")}`);
-    }
+      if (newPreviewItems.length > 0) {
+        // Animation de confirmation
+        setJustDropped(true)
+        setTimeout(() => setJustDropped(false), 600)
+      }
 
-    if (newPreviewItems.length > 0) {
-      // Animation de confirmation
-      setJustDropped(true);
-      setTimeout(() => setJustDropped(false), 600);
-    }
-
-    setPreviewFiles((prev) => [...prev, ...newPreviewItems]);
-  }, [clearMessages]);
+      setPreviewFiles((prev) => [...prev, ...newPreviewItems])
+    },
+    [clearMessages]
+  )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault()
+    e.stopPropagation()
     // Vérifier qu'on quitte vraiment la zone (pas un enfant)
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX
+    const y = e.clientY
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDragging(false);
+      setIsDragging(false)
     }
-  }, []);
+  }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    handleFilesSelect(e.dataTransfer.files);
-  }, [handleFilesSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragging(false)
+      handleFilesSelect(e.dataTransfer.files)
+    },
+    [handleFilesSelect]
+  )
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFilesSelect(e.target.files);
+    handleFilesSelect(e.target.files)
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = ''
     }
-  };
+  }
 
   const updateFileYear = (index: number, value: string) => {
     setPreviewFiles((prev) =>
       prev.map((item, i) =>
-        i === index
-          ? { ...item, annee: value === "none" ? null : parseInt(value, 10) }
-          : item
+        i === index ? { ...item, annee: value === 'none' ? null : parseInt(value, 10) } : item
       )
-    );
-  };
+    )
+  }
 
   const updateFileType = (index: number, value: string) => {
     setPreviewFiles((prev) =>
       prev.map((item, i) =>
-        i === index
-          ? { ...item, type: value === "none" ? null : (value as DocumentType) }
-          : item
+        i === index ? { ...item, type: value === 'none' ? null : (value as DocumentType) } : item
       )
-    );
-  };
+    )
+  }
 
   const handleUpload = async () => {
     const filesWithMetadata: FileWithMetadata[] = previewFiles.map((item) => ({
       file: item.file,
       annee: item.annee,
       type: item.type,
-    }));
+    }))
 
-    const result = await upload(filesWithMetadata);
+    const result = await upload(filesWithMetadata)
     if (result.success) {
-      setPreviewFiles([]);
+      setPreviewFiles([])
     }
-  };
+  }
 
   const removeFile = (index: number) => {
-    setPreviewFiles((prev) => prev.filter((_, i) => i !== index));
-  };
+    setPreviewFiles((prev) => prev.filter((_, i) => i !== index))
+  }
 
   const clearAllFiles = () => {
-    setPreviewFiles([]);
+    setPreviewFiles([])
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = ''
     }
-  };
+  }
 
-  const displayError = error || validationError;
-  const hasFiles = previewFiles.length > 0;
+  const displayError = error || validationError
+  const hasFiles = previewFiles.length > 0
 
   return (
     <Card>
@@ -174,14 +170,14 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {displayError && (
-          <div className="flex items-center gap-2 p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950 rounded-md animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="fade-in slide-in-from-top-2 flex animate-in items-center gap-2 rounded-md bg-red-50 p-3 text-red-500 text-sm duration-200 dark:bg-red-950">
             <X className="h-4 w-4 shrink-0" />
             {displayError}
           </div>
         )}
 
         {success && (
-          <div className="flex items-center gap-2 p-3 text-sm text-green-600 bg-green-50 dark:bg-green-950 rounded-md animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="fade-in slide-in-from-top-2 flex animate-in items-center gap-2 rounded-md bg-green-50 p-3 text-green-600 text-sm duration-200 dark:bg-green-950">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             {success}
           </div>
@@ -194,12 +190,12 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={cn(
-            "relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200",
+            'relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-all duration-200',
             isDragging
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 scale-[1.02]"
+              ? 'scale-[1.02] border-blue-500 bg-blue-50 dark:bg-blue-950/30'
               : justDropped
-              ? "border-green-500 bg-green-50 dark:bg-green-950/30"
-              : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+                ? 'border-green-500 bg-green-50 dark:bg-green-950/30'
+                : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
           )}
         >
           <input
@@ -215,16 +211,16 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
             {/* Icône animée */}
             <div
               className={cn(
-                "mx-auto w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200",
+                'mx-auto flex h-14 w-14 items-center justify-center rounded-full transition-all duration-200',
                 isDragging
-                  ? "bg-blue-100 dark:bg-blue-900/50 scale-110"
+                  ? 'scale-110 bg-blue-100 dark:bg-blue-900/50'
                   : justDropped
-                  ? "bg-green-100 dark:bg-green-900/50"
-                  : "bg-muted"
+                    ? 'bg-green-100 dark:bg-green-900/50'
+                    : 'bg-muted'
               )}
             >
               {isDragging ? (
-                <FileUp className="h-7 w-7 text-blue-500 animate-bounce" />
+                <FileUp className="h-7 w-7 animate-bounce text-blue-500" />
               ) : justDropped ? (
                 <CheckCircle2 className="h-7 w-7 text-green-500" />
               ) : (
@@ -240,18 +236,14 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
                 </p>
               ) : (
                 <>
-                  <p className="font-medium">
-                    Glissez vos fichiers PDF ici
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    ou cliquez pour sélectionner
-                  </p>
+                  <p className="font-medium">Glissez vos fichiers PDF ici</p>
+                  <p className="text-muted-foreground text-sm">ou cliquez pour sélectionner</p>
                 </>
               )}
             </div>
 
             {/* Badge format */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs text-muted-foreground">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-muted-foreground text-xs">
               <FileText className="h-3 w-3" />
               PDF uniquement
             </div>
@@ -260,10 +252,11 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
 
         {/* Liste des fichiers */}
         {hasFiles && (
-          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="fade-in slide-in-from-bottom-2 animate-in space-y-3 duration-300">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">
-                {previewFiles.length} fichier{previewFiles.length > 1 ? "s" : ""} sélectionné{previewFiles.length > 1 ? "s" : ""}
+              <Label className="font-medium text-sm">
+                {previewFiles.length} fichier{previewFiles.length > 1 ? 's' : ''} sélectionné
+                {previewFiles.length > 1 ? 's' : ''}
               </Label>
               <Button
                 type="button"
@@ -272,28 +265,28 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
                 onClick={clearAllFiles}
                 className="text-muted-foreground hover:text-destructive"
               >
-                <X className="h-4 w-4 mr-1" />
+                <X className="mr-1 h-4 w-4" />
                 Tout effacer
               </Button>
             </div>
 
-            <div className="border rounded-lg divide-y max-h-80 overflow-y-auto">
+            <div className="max-h-80 divide-y overflow-y-auto rounded-lg border">
               {previewFiles.map((item, index) => (
                 <div
                   key={item.id}
-                  className="group p-3 space-y-3 animate-in fade-in slide-in-from-left-2 duration-200"
+                  className="group fade-in slide-in-from-left-2 animate-in space-y-3 p-3 duration-200"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-center gap-3">
                     {/* Icône PDF */}
-                    <div className="shrink-0 w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/50 flex items-center justify-center">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950/50">
                       <FileText className="h-5 w-5 text-red-500" />
                     </div>
 
                     {/* Infos fichier */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.file.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-sm">{item.file.name}</p>
+                      <p className="text-muted-foreground text-xs">
                         {formatFileSize(item.file.size)}
                       </p>
                     </div>
@@ -304,19 +297,19 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeFile(index)}
-                      className="shrink-0 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
 
                   {/* Sélecteurs année et type */}
-                  <div className="flex flex-col sm:flex-row gap-2 pl-13">
+                  <div className="flex flex-col gap-2 pl-13 sm:flex-row">
                     <Select
-                      value={item.annee?.toString() || "none"}
+                      value={item.annee?.toString() || 'none'}
                       onValueChange={(value) => updateFileYear(index, value)}
                     >
-                      <SelectTrigger className="h-8 text-xs w-full sm:w-35">
+                      <SelectTrigger className="h-8 w-full text-xs sm:w-35">
                         <SelectValue placeholder="Année" />
                       </SelectTrigger>
                       <SelectContent>
@@ -330,10 +323,10 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
                     </Select>
 
                     <Select
-                      value={item.type || "none"}
+                      value={item.type || 'none'}
                       onValueChange={(value) => updateFileType(index, value)}
                     >
-                      <SelectTrigger className="h-8 text-xs w-full sm:w-50">
+                      <SelectTrigger className="h-8 w-full text-xs sm:w-50">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -359,13 +352,14 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
             >
               {uploading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Upload en cours...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Uploader {previewFiles.length > 1 ? `(${previewFiles.length} fichiers)` : "(1 fichier)"}
+                  <Upload className="mr-2 h-4 w-4" />
+                  Uploader{' '}
+                  {previewFiles.length > 1 ? `(${previewFiles.length} fichiers)` : '(1 fichier)'}
                 </>
               )}
             </Button>
@@ -373,5 +367,5 @@ export function DocumentUpload({ enterpriseId }: DocumentUploadProps) {
         )}
       </CardContent>
     </Card>
-  );
+  )
 }

@@ -267,4 +267,4 @@ POINTS D'ATTENTION
 3. Bien distinguer case 210 (ventes) de cases 214+218 (production)
 4. La case 226 = subventions, la case 230 = autres produits (différent !)
 5. Certains postes n'existent pas en simplifié : découvert, reprises provisions
-6. Pour les dettes fiscales/sociales : toujours soustraire case 169 de case 172`;
+6. Pour les dettes fiscales/sociales : toujours soustraire case 169 de case 172`

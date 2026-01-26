@@ -1,105 +1,110 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
-  useUpdateDocument,
-  useDeleteDocument,
-  useExtraction,
-  useDocumentUrl,
-  getDocumentStatus,
-  getDocumentsSummary,
-} from "@/hooks";
-import type { Document, DocumentType, TypeLiasse } from "@/types";
-import type { ExtractionData } from "@/schemas/extraction.schema";
-import { AVAILABLE_YEARS, DOCUMENT_TYPES, TYPE_LIASSE_OPTIONS } from "@/types/document";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Clock,
+  Eye,
+  FileCheck,
+  FileText,
+  FileX,
+  Loader2,
+  MoreVertical,
+  PlayCircle,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
+import { bulkValidateExtractions } from '@/actions/extraction.actions'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu'
+import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import {
-  FileText,
-  Loader2,
-  Trash2,
-  Check,
-  Sparkles,
-  Eye,
-  RefreshCw,
-  FileCheck,
-  Clock,
-  FileX,
-  MoreVertical,
-  PlayCircle,
-} from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { showSuccess, showWarning, showInfo } from "@/lib/toast";
-import { ExtractionPreview } from "./extraction-preview";
-import { ExtractionSplitView } from "./extraction-split-view";
-import { cn } from "@/lib/utils";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  getDocumentStatus,
+  getDocumentsSummary,
+  useDeleteDocument,
+  useDocumentUrl,
+  useExtraction,
+  useUpdateDocument,
+} from '@/hooks'
+import { showError, showInfo, showSuccess, showWarning } from '@/lib/toast'
+import { cn } from '@/lib/utils'
+import type { ExtractionData } from '@/schemas/extraction.schema'
+import type { Document, DocumentType, TypeLiasse } from '@/types'
+import { AVAILABLE_YEARS, DOCUMENT_TYPES, TYPE_LIASSE_OPTIONS } from '@/types/document'
+import { ExtractionPreview } from './extraction-preview'
+import { ExtractionSplitView, type NavigableDocument } from './extraction-split-view'
 
 interface ExtractedData {
-  id: string;
-  donnees: ExtractionData;
-  is_validated: boolean;
+  id: string
+  donnees: ExtractionData
+  is_validated: boolean
 }
 
 interface DocumentListProps {
-  enterpriseId: string;
-  documents: Document[];
-  extractions?: Map<string, ExtractedData>;
+  enterpriseId: string
+  documents: Document[]
+  extractions?: Map<string, ExtractedData>
 }
 
 // Type pour le document sélectionné dans la split-view
 interface SelectedDocument {
-  id: string;
-  name: string;
-  extractionId: string;
-  data: ExtractionData;
-  isValidated: boolean;
-  typeLiasse: TypeLiasse | null;
+  id: string
+  name: string
+  extractionId: string
+  data: ExtractionData
+  isValidated: boolean
+  typeLiasse: TypeLiasse | null
 }
 
 // Badge de statut
-function StatusBadge({ status, label, color }: { status: string; label: string; color: "gray" | "orange" | "green" }) {
+function StatusBadge({
+  status,
+  label,
+  color,
+}: {
+  status: string
+  label: string
+  color: 'gray' | 'orange' | 'green'
+}) {
   const colorClasses = {
-    gray: "bg-muted text-muted-foreground",
-    orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-    green: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-  };
+    gray: 'bg-muted text-muted-foreground',
+    orange: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+    green: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
+  }
 
   const icons = {
     valide: <FileCheck className="h-3 w-3" />,
     extrait: <Clock className="h-3 w-3" />,
     en_attente: <Sparkles className="h-3 w-3" />,
     non_applicable: <FileX className="h-3 w-3" />,
-  };
+  }
 
   return (
-    <Badge variant="secondary" className={cn("text-xs font-medium gap-1", colorClasses[color])}>
+    <Badge variant="secondary" className={cn('gap-1 font-medium text-xs', colorClasses[color])}>
       {icons[status as keyof typeof icons]}
       {label}
     </Badge>
-  );
+  )
 }
 
 // Résumé des documents
@@ -109,152 +114,235 @@ function DocumentsSummary({
   extraits,
   enAttente,
 }: {
-  total: number;
-  valides: number;
-  extraits: number;
-  enAttente: number;
+  total: number
+  valides: number
+  extraits: number
+  enAttente: number
 }) {
-  const parts: string[] = [];
-  if (valides > 0) parts.push(`${valides} validé${valides > 1 ? "s" : ""}`);
-  if (extraits > 0) parts.push(`${extraits} extrait${extraits > 1 ? "s" : ""}`);
-  if (enAttente > 0) parts.push(`${enAttente} à extraire`);
+  const parts: string[] = []
+  if (valides > 0) parts.push(`${valides} validé${valides > 1 ? 's' : ''}`)
+  if (extraits > 0) parts.push(`${extraits} extrait${extraits > 1 ? 's' : ''}`)
+  if (enAttente > 0) parts.push(`${enAttente} à extraire`)
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span className="font-medium text-foreground">{total} document{total > 1 ? "s" : ""}</span>
+    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+      <span className="font-medium text-foreground">
+        {total} document{total > 1 ? 's' : ''}
+      </span>
       {parts.length > 0 && (
         <>
           <span>·</span>
-          <span>{parts.join(" · ")}</span>
+          <span>{parts.join(' · ')}</span>
         </>
       )}
     </div>
-  );
+  )
 }
 
-export function DocumentList({ enterpriseId, documents, extractions = new Map() }: DocumentListProps) {
-  const router = useRouter();
-  const { updating, error: updateError, updateYear, updateType, updateTypeLiasse } = useUpdateDocument(enterpriseId);
-  const { deleting, error: deleteError, remove } = useDeleteDocument(enterpriseId);
-  const { extracting, error: extractError, extract } = useExtraction();
-  const { loading: loadingUrl, url: documentUrl, fetchUrl, clearUrl } = useDocumentUrl();
+export function DocumentList({
+  enterpriseId,
+  documents,
+  extractions = new Map(),
+}: DocumentListProps) {
+  const router = useRouter()
+  const {
+    updating,
+    error: updateError,
+    updateYear,
+    updateType,
+    updateTypeLiasse,
+  } = useUpdateDocument(enterpriseId)
+  const { deleting, error: deleteError, remove } = useDeleteDocument(enterpriseId)
+  const { extracting, error: extractError, extract } = useExtraction()
+  const { loading: loadingUrl, url: documentUrl, fetchUrl, clearUrl } = useDocumentUrl()
 
-  const [extractingDocId, setExtractingDocId] = useState<string | null>(null);
-  const [splitViewOpen, setSplitViewOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<SelectedDocument | null>(null);
+  const [extractingDocId, setExtractingDocId] = useState<string | null>(null)
+  const [splitViewOpen, setSplitViewOpen] = useState(false)
+  const [selectedDoc, setSelectedDoc] = useState<SelectedDocument | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
 
   // État pour l'extraction en série
-  const [isExtractingAll, setIsExtractingAll] = useState(false);
-  const [extractionProgress, setExtractionProgress] = useState({ current: 0, total: 0 });
+  const [isExtractingAll, setIsExtractingAll] = useState(false)
+  const [extractionProgress, setExtractionProgress] = useState({ current: 0, total: 0 })
 
-  const error = updateError || deleteError || extractError;
+  // État pour la validation en masse
+  const [isBulkValidating, setIsBulkValidating] = useState(false)
+
+  // État pour le filtre et le tri
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'extracted' | 'validated'>(
+    'all'
+  )
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+
+  const error = updateError || deleteError || extractError
 
   // Calcul du résumé - utilise uniquement les données serveur
-  const summary = getDocumentsSummary(documents, extractions);
+  const summary = getDocumentsSummary(documents, extractions)
+
+  // Filtrer et trier les documents côté client
+  const filteredDocuments = useMemo(() => {
+    let result = documents
+
+    // Filtre par statut
+    if (statusFilter !== 'all') {
+      result = result.filter((doc) => {
+        const extraction = extractions.get(doc.id)
+        if (statusFilter === 'pending') return !extraction
+        if (statusFilter === 'extracted') return extraction && !extraction.is_validated
+        if (statusFilter === 'validated') return extraction?.is_validated
+        return true
+      })
+    }
+
+    // Tri par année d'exercice
+    result = [...result].sort((a, b) => {
+      const yearA = a.annee_exercice ?? 0
+      const yearB = b.annee_exercice ?? 0
+      return sortOrder === 'desc' ? yearB - yearA : yearA - yearB
+    })
+
+    return result
+  }, [documents, extractions, statusFilter, sortOrder])
 
   // Filtrer les documents éligibles à l'extraction
   const getExtractableDocuments = () => {
-    return documents.filter(doc =>
-      doc.type === "liasse_fiscale" &&
-      doc.type_liasse && // Type de liasse défini
-      !extractions.get(doc.id) // Pas encore extrait
-    );
-  };
+    return documents.filter(
+      (doc) =>
+        doc.type === 'liasse_fiscale' &&
+        doc.type_liasse && // Type de liasse défini
+        !extractions.get(doc.id) // Pas encore extrait
+    )
+  }
 
-  const extractableCount = getExtractableDocuments().length;
+  const extractableCount = getExtractableDocuments().length
 
   // Fonction d'extraction en série
   const handleExtractAll = async () => {
-    const docsToExtract = getExtractableDocuments();
+    const docsToExtract = getExtractableDocuments()
     if (docsToExtract.length === 0) {
-      showInfo("Aucun document à extraire");
-      return;
+      showInfo('Aucun document à extraire')
+      return
     }
 
-    setIsExtractingAll(true);
-    setExtractionProgress({ current: 0, total: docsToExtract.length });
+    setIsExtractingAll(true)
+    setExtractionProgress({ current: 0, total: docsToExtract.length })
 
-    let successCount = 0;
-    let errorCount = 0;
+    let successCount = 0
+    let errorCount = 0
 
     for (let i = 0; i < docsToExtract.length; i++) {
-      const doc = docsToExtract[i];
-      setExtractionProgress({ current: i + 1, total: docsToExtract.length });
-      setExtractingDocId(doc.id);
+      const doc = docsToExtract[i]
+      setExtractionProgress({ current: i + 1, total: docsToExtract.length })
+      setExtractingDocId(doc.id)
 
       try {
-        const result = await extract(doc.id);
+        const result = await extract(doc.id)
         if (result.success) {
-          successCount++;
+          successCount++
         } else {
-          errorCount++;
-          console.error(`Erreur extraction ${doc.nom_fichier}:`, result.error);
+          errorCount++
+          console.error(`Erreur extraction ${doc.nom_fichier}:`, result.error)
         }
       } catch (error) {
-        errorCount++;
-        console.error(`Erreur extraction ${doc.nom_fichier}:`, error);
+        errorCount++
+        console.error(`Erreur extraction ${doc.nom_fichier}:`, error)
       }
 
       // Petit délai entre chaque extraction pour éviter de surcharger l'API
       if (i < docsToExtract.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
 
-    setIsExtractingAll(false);
-    setExtractingDocId(null);
-    setExtractionProgress({ current: 0, total: 0 });
+    setIsExtractingAll(false)
+    setExtractingDocId(null)
+    setExtractionProgress({ current: 0, total: 0 })
 
     // Rafraîchir les données
-    await new Promise(resolve => setTimeout(resolve, 300));
-    router.refresh();
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    router.refresh()
 
     // Toast récapitulatif
     if (errorCount === 0) {
-      showSuccess(`${successCount} document${successCount > 1 ? "s" : ""} extrait${successCount > 1 ? "s" : ""} avec succès`);
+      showSuccess(
+        `${successCount} document${successCount > 1 ? 's' : ''} extrait${successCount > 1 ? 's' : ''} avec succès`
+      )
     } else {
-      showWarning(`${successCount} succès, ${errorCount} erreur${errorCount > 1 ? "s" : ""}`);
+      showWarning(`${successCount} succès, ${errorCount} erreur${errorCount > 1 ? 's' : ''}`)
     }
-  };
+  }
 
   // Fonctions d'accès aux données - source unique : props serveur
   const getDocumentExtraction = (documentId: string) => {
-    return extractions.get(documentId) || null;
-  };
+    return extractions.get(documentId) || null
+  }
 
   const getExtractionData = (documentId: string): ExtractionData | null => {
-    return getDocumentExtraction(documentId)?.donnees ?? null;
-  };
+    return getDocumentExtraction(documentId)?.donnees ?? null
+  }
 
   const getExtractionId = (documentId: string): string | undefined => {
-    return getDocumentExtraction(documentId)?.id;
-  };
+    return getDocumentExtraction(documentId)?.id
+  }
 
   const isExtractionValidated = (documentId: string): boolean => {
-    return getDocumentExtraction(documentId)?.is_validated ?? false;
-  };
+    return getDocumentExtraction(documentId)?.is_validated ?? false
+  }
 
   const handleExtract = async (documentId: string) => {
-    setExtractingDocId(documentId);
-    const result = await extract(documentId);
+    setExtractingDocId(documentId)
+    const result = await extract(documentId)
     if (result.success) {
       // Attendre que revalidatePath soit effectif avant de rafraîchir
-      await new Promise(resolve => setTimeout(resolve, 300));
-      router.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      router.refresh()
     }
-    setExtractingDocId(null);
-  };
+    setExtractingDocId(null)
+  }
 
   const handleDataUpdated = () => {
-    router.refresh();
-  };
+    router.refresh()
+  }
 
-  const openSplitView = async (doc: Document) => {
-    const extractionId = getExtractionId(doc.id);
-    const data = getExtractionData(doc.id);
-    const validated = isExtractionValidated(doc.id);
+  // Liste des documents avec extraction (pour navigation)
+  const documentsWithExtraction = useMemo(() => {
+    return filteredDocuments.filter((doc) => {
+      const extraction = extractions.get(doc.id)
+      return extraction && extraction.donnees
+    })
+  }, [filteredDocuments, extractions])
 
-    if (!extractionId || !data) return;
+  // Documents navigables avec leur statut (pour le dropdown dans la split view)
+  const navigableDocuments: NavigableDocument[] = useMemo(() => {
+    return documentsWithExtraction.map((doc) => {
+      const extraction = extractions.get(doc.id)
+      return {
+        id: doc.id,
+        nom_fichier: doc.nom_fichier,
+        hasExtraction: !!extraction,
+        isValidated: extraction?.is_validated ?? false,
+      }
+    })
+  }, [documentsWithExtraction, extractions])
+
+  // Documents extraits mais non validés (pour bulk validation)
+  const pendingValidationDocs = useMemo(() => {
+    return documents.filter((doc) => {
+      const extraction = extractions.get(doc.id)
+      return extraction && !extraction.is_validated
+    })
+  }, [documents, extractions])
+
+  const openSplitView = async (doc: Document, index?: number) => {
+    const extractionId = getExtractionId(doc.id)
+    const data = getExtractionData(doc.id)
+    const validated = isExtractionValidated(doc.id)
+
+    if (!extractionId || !data) return
+
+    // Trouver l'index dans la liste des documents avec extraction
+    const docIndex =
+      index !== undefined ? index : documentsWithExtraction.findIndex((d) => d.id === doc.id)
 
     setSelectedDoc({
       id: doc.id,
@@ -263,41 +351,74 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
       data,
       isValidated: validated,
       typeLiasse: doc.type_liasse,
-    });
-    setSplitViewOpen(true);
+    })
+    setSelectedIndex(docIndex)
+    setSplitViewOpen(true)
 
     // Charger l'URL du document
-    await fetchUrl(doc.id);
-  };
+    await fetchUrl(doc.id)
+  }
+
+  const handleNavigate = async (newIndex: number) => {
+    if (newIndex < 0 || newIndex >= documentsWithExtraction.length) return
+
+    const doc = documentsWithExtraction[newIndex]
+    await openSplitView(doc, newIndex)
+  }
+
+  // Handler pour la validation en masse
+  const handleBulkValidate = async () => {
+    if (pendingValidationDocs.length === 0) return
+
+    setIsBulkValidating(true)
+
+    const extractionIds = pendingValidationDocs
+      .map((doc) => extractions.get(doc.id)?.id)
+      .filter((id): id is string => !!id)
+
+    const result = await bulkValidateExtractions(enterpriseId, extractionIds)
+
+    if (result.success) {
+      showSuccess(
+        `${result.count ?? pendingValidationDocs.length} document${(result.count ?? pendingValidationDocs.length) > 1 ? 's' : ''} validé${(result.count ?? pendingValidationDocs.length) > 1 ? 's' : ''}`
+      )
+      router.refresh()
+    } else {
+      showError(result.error ?? 'Erreur lors de la validation')
+    }
+
+    setIsBulkValidating(false)
+  }
 
   const closeSplitView = () => {
-    setSplitViewOpen(false);
-    setSelectedDoc(null);
-    clearUrl();
-  };
+    setSplitViewOpen(false)
+    setSelectedDoc(null)
+    setSelectedIndex(-1)
+    clearUrl()
+  }
 
   const handleSplitViewSaved = () => {
-    router.refresh();
-  };
+    router.refresh()
+  }
 
   const handleSplitViewValidated = () => {
-    router.refresh();
+    router.refresh()
     // Mettre à jour le statut local
     if (selectedDoc) {
-      setSelectedDoc({ ...selectedDoc, isValidated: true });
+      setSelectedDoc({ ...selectedDoc, isValidated: true })
     }
-  };
+  }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
 
   if (documents.length === 0) {
-    return null;
+    return null
   }
 
   return (
@@ -325,12 +446,12 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
             >
               {isExtractingAll ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {extractionProgress.current}/{extractionProgress.total}
                 </>
               ) : (
                 <>
-                  <PlayCircle className="h-4 w-4 mr-2" />
+                  <PlayCircle className="mr-2 h-4 w-4" />
                   Extraire tout ({extractableCount})
                 </>
               )}
@@ -340,12 +461,10 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
 
         {/* Barre de progression extraction en série */}
         {isExtractingAll && (
-          <div className="mt-3 p-3 bg-muted rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">
-                Extraction en cours...
-              </span>
-              <span className="text-sm text-muted-foreground">
+          <div className="mt-3 rounded-lg bg-muted p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-medium text-sm">Extraction en cours...</span>
+              <span className="text-muted-foreground text-sm">
                 {extractionProgress.current} / {extractionProgress.total}
               </span>
             </div>
@@ -366,32 +485,98 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
           />
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+      <CardContent className="space-y-3 px-4 sm:space-y-4 sm:px-6">
+        {/* Filtres et tri */}
+        <div className="flex flex-wrap gap-2">
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}
+          >
+            <SelectTrigger className="h-9 w-[140px]">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="pending">En attente</SelectItem>
+              <SelectItem value="extracted">Extrait</SelectItem>
+              <SelectItem value="validated">Validé</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={sortOrder}
+            onValueChange={(value) => setSortOrder(value as typeof sortOrder)}
+          >
+            <SelectTrigger className="h-9 w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Année (récent → ancien)</SelectItem>
+              <SelectItem value="asc">Année (ancien → récent)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Bannière validation en masse */}
+        {pendingValidationDocs.length > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="text-amber-800 text-sm dark:text-amber-200">
+                {pendingValidationDocs.length} document
+                {pendingValidationDocs.length > 1 ? 's' : ''} en attente de validation
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleBulkValidate}
+              disabled={isBulkValidating}
+              className="shrink-0"
+            >
+              {isBulkValidating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+              )}
+              Tout valider
+            </Button>
+          </div>
+        )}
+
         {error && (
-          <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950 rounded-md">
+          <div className="rounded-md bg-red-50 p-3 text-red-500 text-sm dark:bg-red-950">
             {error}
           </div>
         )}
 
+        {/* Message si aucun résultat après filtrage */}
+        {filteredDocuments.length === 0 && documents.length > 0 && (
+          <div className="rounded-lg border bg-muted/50 py-6 text-center">
+            <p className="text-muted-foreground text-sm">
+              Aucun document ne correspond à ce filtre.
+            </p>
+          </div>
+        )}
+
         <ul className="space-y-2 sm:space-y-3">
-          {documents.map((doc) => {
-            const extraction = extractions.get(doc.id);
-            const statusInfo = getDocumentStatus(doc, extraction);
-            const extractionData = getExtractionData(doc.id);
-            const isExtracting = extractingDocId === doc.id && extracting;
+          {filteredDocuments.map((doc) => {
+            const extraction = extractions.get(doc.id)
+            const statusInfo = getDocumentStatus(doc, extraction)
+            const extractionData = getExtractionData(doc.id)
+            const isExtracting = extractingDocId === doc.id && extracting
 
             return (
-              <li
-                key={doc.id}
-                className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3"
-              >
+              <li key={doc.id} className="space-y-2 rounded-lg border p-3 sm:space-y-3 sm:p-4">
                 <div className="flex items-start gap-2 sm:gap-3">
-                  <div className="shrink-0 p-1.5 sm:p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                    <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400" />
+                  <div className="shrink-0 rounded-lg bg-red-100 p-1.5 sm:p-2 dark:bg-red-900">
+                    <FileText className="h-4 w-4 text-red-600 sm:h-5 sm:w-5 dark:text-red-400" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <p className="text-sm sm:text-base font-medium truncate max-w-[150px] sm:max-w-none" title={doc.nom_fichier}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <p
+                        className="max-w-[150px] truncate font-medium text-sm sm:max-w-none sm:text-base"
+                        title={doc.nom_fichier}
+                      >
                         {doc.nom_fichier}
                       </p>
                       <StatusBadge
@@ -400,29 +585,35 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                         color={statusInfo.color}
                       />
                     </div>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground sm:text-xs">
                       Uploadé le {formatDate(doc.created_at)}
                     </p>
                   </div>
                   {/* Actions desktop */}
-                  <div className="hidden sm:flex items-center gap-1 shrink-0">
+                  <div className="hidden shrink-0 items-center gap-1 sm:flex">
                     {statusInfo.canExtract && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleExtract(doc.id)}
-                        disabled={isExtracting || (doc.type === "liasse_fiscale" && !doc.type_liasse)}
+                        disabled={
+                          isExtracting || (doc.type === 'liasse_fiscale' && !doc.type_liasse)
+                        }
                         className="text-xs"
-                        title={doc.type === "liasse_fiscale" && !doc.type_liasse ? "Choisir le type de liasse d'abord" : undefined}
+                        title={
+                          doc.type === 'liasse_fiscale' && !doc.type_liasse
+                            ? "Choisir le type de liasse d'abord"
+                            : undefined
+                        }
                       >
                         {isExtracting ? (
                           <>
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                             Extraction...
                           </>
                         ) : (
                           <>
-                            <Sparkles className="h-3 w-3 mr-1" />
+                            <Sparkles className="mr-1 h-3 w-3" />
                             Extraire
                           </>
                         )}
@@ -435,7 +626,7 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                         onClick={() => openSplitView(doc)}
                         className="text-xs"
                       >
-                        <Eye className="h-3 w-3 mr-1" />
+                        <Eye className="mr-1 h-3 w-3" />
                         Voir
                       </Button>
                     )}
@@ -445,7 +636,7 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                         size="sm"
                         onClick={() => handleExtract(doc.id)}
                         disabled={isExtracting}
-                        className="text-xs text-muted-foreground"
+                        className="text-muted-foreground text-xs"
                         title="Relancer l'extraction"
                       >
                         {isExtracting ? (
@@ -461,40 +652,52 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                       onClick={() => remove(doc.id, doc.nom_fichier)}
                       disabled={deleting === doc.id}
                       className="text-muted-foreground hover:text-destructive"
+                      aria-label="Supprimer le document"
                     >
                       {deleting === doc.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}
+                      <span className="sr-only">Supprimer le document</span>
                     </Button>
                   </div>
 
                   {/* Actions mobile - dropdown menu */}
-                  <div className="sm:hidden shrink-0">
+                  <div className="shrink-0 sm:hidden">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="Actions du document"
+                        >
                           {isExtracting || deleting === doc.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <MoreVertical className="h-4 w-4" />
                           )}
+                          <span className="sr-only">Actions du document</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {statusInfo.canExtract && (
                           <DropdownMenuItem
                             onClick={() => handleExtract(doc.id)}
-                            disabled={isExtracting || (doc.type === "liasse_fiscale" && !doc.type_liasse)}
+                            disabled={
+                              isExtracting || (doc.type === 'liasse_fiscale' && !doc.type_liasse)
+                            }
                           >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            {doc.type === "liasse_fiscale" && !doc.type_liasse ? "Choisir le type de liasse" : "Extraire"}
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            {doc.type === 'liasse_fiscale' && !doc.type_liasse
+                              ? 'Choisir le type de liasse'
+                              : 'Extraire'}
                           </DropdownMenuItem>
                         )}
                         {statusInfo.canView && getExtractionId(doc.id) && (
                           <DropdownMenuItem onClick={() => openSplitView(doc)}>
-                            <Eye className="h-4 w-4 mr-2" />
+                            <Eye className="mr-2 h-4 w-4" />
                             Voir les données
                           </DropdownMenuItem>
                         )}
@@ -503,7 +706,7 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                             onClick={() => handleExtract(doc.id)}
                             disabled={isExtracting}
                           >
-                            <RefreshCw className="h-4 w-4 mr-2" />
+                            <RefreshCw className="mr-2 h-4 w-4" />
                             Relancer l&apos;extraction
                           </DropdownMenuItem>
                         )}
@@ -513,7 +716,7 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                           disabled={deleting === doc.id}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="mr-2 h-4 w-4" />
                           Supprimer
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -521,9 +724,9 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Type de document</Label>
+                    <Label className="text-muted-foreground text-xs">Type de document</Label>
                     <Select
                       value={doc.type}
                       onValueChange={(value) => updateType(doc.id, value as DocumentType)}
@@ -547,9 +750,9 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Année d&apos;exercice</Label>
+                    <Label className="text-muted-foreground text-xs">Année d&apos;exercice</Label>
                     <Select
-                      value={doc.annee_exercice?.toString() ?? "none"}
+                      value={doc.annee_exercice?.toString() ?? 'none'}
                       onValueChange={(value) => updateYear(doc.id, value)}
                       disabled={updating === doc.id}
                     >
@@ -572,15 +775,20 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                   </div>
 
                   {/* Type de liasse fiscale - affiché uniquement pour les liasses fiscales */}
-                  {doc.type === "liasse_fiscale" && (
+                  {doc.type === 'liasse_fiscale' && (
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Type de liasse</Label>
+                      <Label className="text-muted-foreground text-xs">Type de liasse</Label>
                       <Select
-                        value={doc.type_liasse ?? ""}
+                        value={doc.type_liasse ?? ''}
                         onValueChange={(value) => updateTypeLiasse(doc.id, value as TypeLiasse)}
                         disabled={updating === doc.id || !!extraction}
                       >
-                        <SelectTrigger className={cn("h-9", !doc.type_liasse && "border-orange-300 dark:border-orange-700")}>
+                        <SelectTrigger
+                          className={cn(
+                            'h-9',
+                            !doc.type_liasse && 'border-orange-300 dark:border-orange-700'
+                          )}
+                        >
                           {updating === doc.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
@@ -592,7 +800,9 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                             <SelectItem key={option.value} value={option.value}>
                               <div className="flex flex-col">
                                 <span>{option.label}</span>
-                                <span className="text-xs text-muted-foreground">{option.description}</span>
+                                <span className="text-muted-foreground text-xs">
+                                  {option.description}
+                                </span>
                               </div>
                             </SelectItem>
                           ))}
@@ -607,8 +817,8 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                   )}
                 </div>
 
-                {doc.type !== "autre" && doc.type !== "non_classe" && doc.annee_exercice && (
-                  <div className="flex items-center gap-1 text-xs text-green-600">
+                {doc.type !== 'autre' && doc.type !== 'non_classe' && doc.annee_exercice && (
+                  <div className="flex items-center gap-1 text-green-600 text-xs">
                     <Check className="h-3 w-3" />
                     <span>Document configuré</span>
                   </div>
@@ -616,7 +826,7 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
 
                 {/* Aperçu des données extraites */}
                 {extractionData && (
-                  <div className="pt-2 border-t">
+                  <div className="border-t pt-2">
                     <ExtractionPreview
                       extractionId={getExtractionId(doc.id)}
                       enterpriseId={enterpriseId}
@@ -627,8 +837,29 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
                     />
                   </div>
                 )}
+
+                {/* CTA Valider - affiché si extraction existe mais non validée */}
+                {extraction && !extraction.is_validated && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/50">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <span className="text-amber-700 text-sm dark:text-amber-300">
+                        Données extraites — Vérifiez et validez
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => openSplitView(doc)}
+                      className="shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      <Eye className="mr-1.5 h-3.5 w-3.5" />
+                      Valider
+                    </Button>
+                  </div>
+                )}
               </li>
-            );
+            )
           })}
         </ul>
       </CardContent>
@@ -638,7 +869,7 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
         <ExtractionSplitView
           open={splitViewOpen}
           onOpenChange={(open) => {
-            if (!open) closeSplitView();
+            if (!open) closeSplitView()
           }}
           documentName={selectedDoc.name}
           documentUrl={documentUrl}
@@ -650,8 +881,11 @@ export function DocumentList({ enterpriseId, documents, extractions = new Map() 
           typeLiasse={selectedDoc.typeLiasse}
           onSaved={handleSplitViewSaved}
           onValidated={handleSplitViewValidated}
+          currentIndex={selectedIndex}
+          navigableDocuments={navigableDocuments}
+          onNavigate={handleNavigate}
         />
       )}
     </Card>
-  );
+  )
 }
