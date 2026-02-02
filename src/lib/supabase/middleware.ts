@@ -1,6 +1,27 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 
+// Public routes that don't require authentication
+const publicRoutes = [
+  '/',
+  '/produit',
+  '/tarifs',
+  '/dirigeants',
+  '/experts-comptables',
+  '/connexion',
+  '/inscription',
+  '/mot-de-passe-oublie',
+  '/mentions-legales',
+  '/cgu',
+  '/confidentialite',
+  // Legacy routes (will redirect)
+  '/signup',
+  '/login',
+]
+
+// Protected routes that require authentication
+const protectedRoutes = ['/dashboard', '/enterprise']
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -31,21 +52,28 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protected routes
-  const protectedRoutes = ['/dashboard', '/enterprise']
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
+  const pathname = request.nextUrl.pathname
+
+  // Check if this is a public route
+  const isPublicRoute = publicRoutes.some((route) =>
+    pathname === route || (route !== '/' && pathname.startsWith(route))
   )
 
-  // Redirect to login if not authenticated
+  // Check if this is a protected route
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  )
+
+  // Redirect to connexion if not authenticated and trying to access protected route
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/connexion'
     return NextResponse.redirect(url)
   }
 
-  // Redirect logged-in users away from login page
-  if (user && request.nextUrl.pathname === '/login') {
+  // Redirect logged-in users away from auth pages to dashboard
+  const authPages = ['/login', '/signup', '/connexion', '/inscription', '/mot-de-passe-oublie']
+  if (user && authPages.includes(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

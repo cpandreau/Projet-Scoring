@@ -34,3 +34,6 @@ export {
 export { useTerritorialContext } from './use-territorial-context'
 // Theme hook
 export { type Theme, useTheme } from './use-theme'
+
+// Animation hooks
+export { useCountUp } from './use-count-up'

@@ -32,3 +32,7 @@ export { fetchINPICompanyInfo } from './inpi-company.actions'
 
 // Actions - Sync
 export { syncINPIToDatabase } from './inpi-sync.actions'
+
+// Actions - Import Bilan
+export { autoImportINPIBilans, importINPIBilan } from './inpi-import-bilan.actions'
+export type { AutoImportResult, ImportINPIBilanResult } from './inpi-import-bilan.actions'

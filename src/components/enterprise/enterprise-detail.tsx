@@ -23,6 +23,7 @@ import type {
   DossierObservation,
 } from '@/repositories/inpi.repository'
 import type { Enterprise } from '@/types'
+import { CompanyNamesCard } from './company-names-card'
 import { DataSourcesSection } from './data-sources-section'
 import { DataRowWithSource } from './source-indicator'
 
@@ -305,6 +306,9 @@ export function EnterpriseDetail({
           )}
         </dl>
       </Section>
+
+      {/* 1b. Dénominations */}
+      {enterprise.siren && <CompanyNamesCard siren={enterprise.siren} />}
 
       {/* 2. Capital & Gouvernance */}
       <Section title="Capital & Gouvernance" icon={Banknote}>

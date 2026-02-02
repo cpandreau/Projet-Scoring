@@ -1,8 +1,7 @@
-import { AlertTriangle, ArrowRight, TrendingDown } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface AtRiskEnterprise {
@@ -20,49 +19,74 @@ interface AtRiskEnterprisesProps {
 export function AtRiskEnterprises({ enterprises }: AtRiskEnterprisesProps) {
   if (enterprises.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            Entreprises à surveiller
-          </CardTitle>
-          <CardDescription>Dossiers avec un score inférieur à 5/10</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">Aucune entreprise à risque détectée</p>
-        </CardContent>
-      </Card>
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-score-warning/10">
+              <AlertTriangle className="h-4 w-4 text-score-warning" />
+            </div>
+            <h3 className="font-semibold text-foreground">Entreprises à surveiller</h3>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Dossiers avec un score inférieur à 5/10
+          </p>
+        </div>
+        <div className="p-8 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-score-excellent/10 flex items-center justify-center">
+            <CheckCircle className="h-6 w-6 text-score-excellent" />
+          </div>
+          <p className="font-medium text-foreground">Aucune entreprise à risque</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Toutes vos entreprises sont en bonne santé
+          </p>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card className="border-red-200 bg-red-50/30 dark:border-red-900 dark:bg-red-950/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
-          Entreprises à surveiller
-          <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-700 text-xs dark:bg-red-900 dark:text-red-300">
+    <div className="bg-score-critical/5 border border-score-critical/20 rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-score-critical/20">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-score-critical/10">
+            <AlertTriangle className="h-4 w-4 text-score-critical" />
+          </div>
+          <h3 className="font-semibold text-foreground">Entreprises à surveiller</h3>
+          <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-score-critical/10 text-score-critical">
             {enterprises.length}
           </span>
-        </CardTitle>
-        <CardDescription>Dossiers avec un score inférieur à 5/10</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Dossiers avec un score inférieur à 5/10
+        </p>
+      </div>
+      <div className="p-3 space-y-2">
         {enterprises.slice(0, 5).map((enterprise) => (
           <Link
             key={enterprise.id}
             href={`/enterprise/${enterprise.id}/score`}
-            className="flex items-center justify-between rounded-lg border border-red-200 bg-white p-3 transition-colors hover:bg-red-50 dark:border-red-800 dark:bg-red-950/50 dark:hover:bg-red-900/50"
+            className={cn(
+              'flex items-center justify-between rounded-lg p-3',
+              'bg-card border border-border',
+              'transition-all duration-200',
+              'hover:border-brand/30 hover:shadow-sm'
+            )}
           >
-            <div>
-              <p className="font-medium">{enterprise.raison_sociale || 'Sans nom'}</p>
-              <p className="text-muted-foreground text-xs">SIREN: {enterprise.siren || 'N/A'}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground truncate">
+                {enterprise.raison_sociale || 'Sans nom'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                SIREN: {enterprise.siren || 'N/A'}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-3">
               <span
                 className={cn(
-                  'font-bold text-lg',
-                  enterprise.score < 3 ? 'text-red-600' : 'text-orange-500'
+                  'px-2 py-0.5 rounded-full text-sm font-bold font-mono',
+                  enterprise.score < 3
+                    ? 'bg-score-critical/10 text-score-critical'
+                    : 'bg-score-warning/10 text-score-warning'
                 )}
               >
                 {enterprise.score.toFixed(1)}
@@ -70,21 +94,25 @@ export function AtRiskEnterprises({ enterprises }: AtRiskEnterprisesProps) {
               {enterprise.previousScore !== null &&
                 enterprise.previousScore !== undefined &&
                 enterprise.score < enterprise.previousScore && (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
+                  <TrendingDown className="h-4 w-4 text-score-critical" />
                 )}
             </div>
           </Link>
         ))}
 
         {enterprises.length > 5 && (
-          <Button variant="ghost" className="w-full" asChild>
+          <Button
+            variant="ghost"
+            className="w-full mt-2 text-score-critical hover:text-score-critical hover:bg-score-critical/10"
+            asChild
+          >
             <Link href="/enterprise?risk=high">
               Voir les {enterprises.length} entreprises à risque
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

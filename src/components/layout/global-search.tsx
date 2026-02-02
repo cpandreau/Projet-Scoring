@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Archive,
   BarChart3,
   Building2,
   FileText,
@@ -100,11 +101,16 @@ export function GlobalSearch() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted"
+        className={cn(
+          'w-full flex items-center gap-2 px-3 py-2 text-sm',
+          'text-muted-foreground bg-muted/50 rounded-lg',
+          'border border-border hover:border-brand/30 hover:bg-muted',
+          'transition-colors'
+        )}
       >
         <Search className="h-4 w-4" />
-        <span className="hidden sm:inline">Rechercher...</span>
-        <kbd className="pointer-events-none ml-2 hidden select-none rounded border bg-background px-1.5 font-mono text-xs sm:inline">
+        <span className="flex-1 text-left">Rechercher...</span>
+        <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-background px-1.5 font-mono text-[10px] text-muted-foreground">
           ⌘K
         </kbd>
       </button>
@@ -119,7 +125,7 @@ export function GlobalSearch() {
         <CommandList>
           {isPending && (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <Loader2 className="h-5 w-5 animate-spin text-brand" />
             </div>
           )}
 
@@ -140,21 +146,34 @@ export function GlobalSearch() {
                     key={enterprise.id}
                     value={`${enterprise.raison_sociale} ${enterprise.siren}`}
                     onSelect={() => handleSelect(enterprise)}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between py-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{enterprise.raison_sociale || 'Sans nom'}</p>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="p-1.5 rounded-lg bg-muted">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">
+                          {enterprise.raison_sociale || 'Sans nom'}
+                        </p>
                         <p className="text-muted-foreground text-xs">
                           SIREN: {enterprise.siren} · {STATUT_LABELS[enterprise.statut]}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-2">
                       {enterprise.score !== null && enterprise.score !== undefined && zone && (
-                        <span className={cn('font-bold text-sm', getZoneTextClasses(zone))}>
-                          {enterprise.score.toFixed(1)}/10
+                        <span
+                          className={cn(
+                            'px-2 py-0.5 rounded-full font-bold text-xs font-mono',
+                            getZoneTextClasses(zone),
+                            'bg-current/10'
+                          )}
+                          style={{
+                            backgroundColor: `color-mix(in srgb, currentColor 10%, transparent)`,
+                          }}
+                        >
+                          {enterprise.score.toFixed(1)}
                         </span>
                       )}
                       {/* Actions rapides */}
@@ -165,10 +184,10 @@ export function GlobalSearch() {
                             e.stopPropagation()
                             handleSelect(enterprise, 'score')
                           }}
-                          className="rounded p-1 hover:bg-muted"
+                          className="p-1.5 rounded-md hover:bg-brand/10 hover:text-brand transition-colors"
                           title="Voir le score"
                         >
-                          <BarChart3 className="h-3 w-3" />
+                          <BarChart3 className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
@@ -176,10 +195,10 @@ export function GlobalSearch() {
                             e.stopPropagation()
                             handleSelect(enterprise, 'documents')
                           }}
-                          className="rounded p-1 hover:bg-muted"
+                          className="p-1.5 rounded-md hover:bg-brand/10 hover:text-brand transition-colors"
                           title="Voir les documents"
                         >
-                          <FileText className="h-3 w-3" />
+                          <FileText className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
@@ -191,21 +210,41 @@ export function GlobalSearch() {
 
           {!query && (
             <CommandGroup heading="Actions rapides">
-              <CommandItem onSelect={() => handleNavigate('/enterprise/new')}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau dossier
+              <CommandItem
+                onSelect={() => handleNavigate('/enterprise/new')}
+                className="gap-3 py-2.5"
+              >
+                <div className="p-1.5 rounded-lg bg-brand/10 text-brand">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <span>Nouveau dossier</span>
               </CommandItem>
-              <CommandItem onSelect={() => handleNavigate('/dashboard')}>
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Tableau de bord
+              <CommandItem
+                onSelect={() => handleNavigate('/dashboard')}
+                className="gap-3 py-2.5"
+              >
+                <div className="p-1.5 rounded-lg bg-muted">
+                  <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <span>Tableau de bord</span>
               </CommandItem>
-              <CommandItem onSelect={() => handleNavigate('/enterprise')}>
-                <Building2 className="mr-2 h-4 w-4" />
-                Liste des entreprises
+              <CommandItem
+                onSelect={() => handleNavigate('/enterprise')}
+                className="gap-3 py-2.5"
+              >
+                <div className="p-1.5 rounded-lg bg-muted">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <span>Liste des entreprises</span>
               </CommandItem>
-              <CommandItem onSelect={() => handleNavigate('/enterprise/archives')}>
-                <FileText className="mr-2 h-4 w-4" />
-                Archives
+              <CommandItem
+                onSelect={() => handleNavigate('/enterprise/archives')}
+                className="gap-3 py-2.5"
+              >
+                <div className="p-1.5 rounded-lg bg-muted">
+                  <Archive className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <span>Archives</span>
               </CommandItem>
             </CommandGroup>
           )}

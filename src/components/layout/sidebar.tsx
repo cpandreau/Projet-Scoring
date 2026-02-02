@@ -2,14 +2,20 @@
 
 import {
   BarChart3,
+  Bell,
   Building,
+  Building2,
   FileText,
   Info,
   LayoutDashboard,
   Loader2,
+  LogOut,
   MapPin,
+  Newspaper,
   Scale,
+  Settings,
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -21,11 +27,13 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { useCurrentEnterprise } from '@/hooks'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import type { UserType } from '@/lib/auth'
 import { GlobalSearch } from './global-search'
 import { ThemeToggle } from './theme-toggle'
 
 interface SidebarProps {
   email: string
+  userType: UserType
 }
 
 interface SidebarContentProps extends SidebarProps {
@@ -40,7 +48,7 @@ function getInitials(email: string): string {
   return email.slice(0, 2).toUpperCase()
 }
 
-function SidebarContent({ email, onNavigate }: SidebarContentProps) {
+function SidebarContent({ email, userType, onNavigate }: SidebarContentProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -48,14 +56,38 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/connexion')
     router.refresh()
   }
 
   // Détermine si le score est disponible (statut "valide" ou "analyse")
   const isScoreAvailable = enterprise?.statut === 'valide' || enterprise?.statut === 'analyse'
 
-  // Liens pour l'entreprise en cours (routes imbriquées Next.js)
+  // Navigation Dirigeant (simplifiée)
+  const dirigeantLinks = [
+    {
+      name: 'Tableau de bord',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      name: 'Mon Entreprise',
+      href: enterpriseId ? `/enterprise/${enterpriseId}/informations` : '/enterprise',
+      icon: Building2,
+    },
+    {
+      name: 'Alertes',
+      href: '/alertes',
+      icon: Bell,
+    },
+    {
+      name: 'Paramètres',
+      href: '/parametres',
+      icon: Settings,
+    },
+  ]
+
+  // Liens pour l'entreprise en cours (comptable uniquement)
   const enterpriseLinks = enterpriseId
     ? [
         {
@@ -92,6 +124,12 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
           icon: MapPin,
           segment: 'contexte',
         },
+        {
+          name: 'Veille',
+          href: `/enterprise/${enterpriseId}/veille`,
+          icon: Newspaper,
+          segment: 'veille',
+        },
       ]
     : []
 
@@ -99,127 +137,172 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="p-6">
-        <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="font-bold text-primary-foreground text-sm">D</span>
-          </div>
-          <span className="font-semibold text-lg">Défaillantomètre</span>
+        <Link
+          href="/dashboard"
+          onClick={onNavigate}
+          className="group flex items-center gap-2.5 transition-opacity hover:opacity-80"
+        >
+          <Image
+            src="/bilantia_logo.svg"
+            alt="BILANTIA"
+            width={140}
+            height={40}
+            className="h-8 w-auto"
+            priority
+          />
         </Link>
       </div>
 
-      {/* Recherche globale */}
-      <div className="px-4 pb-4">
-        <GlobalSearch />
-      </div>
+      {/* Recherche globale (comptable uniquement) */}
+      {userType === 'comptable' && (
+        <div className="px-4 pb-4">
+          <GlobalSearch />
+        </div>
+      )}
 
       <Separator />
 
-      {/* Navigation principale */}
-      <div className="p-4">
-        <p className="mb-2 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-          Navigation
-        </p>
-        <nav className="space-y-1">
-          <Link
-            href="/dashboard"
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors',
-              pathname === '/dashboard'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Tableau de bord
-          </Link>
-          <Link
-            href="/enterprise"
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors',
-              pathname === '/enterprise' || (pathname.startsWith('/enterprise/') && !enterpriseId)
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            <Building className="h-4 w-4" />
-            Entreprises
-          </Link>
-        </nav>
-      </div>
+      {/* Navigation Dirigeant */}
+      {userType === 'dirigeant' && (
+        <div className="flex-1 p-4">
+          <nav className="space-y-1">
+            {dirigeantLinks.map((item) => {
+              const isActive =
+                item.href === '/dashboard'
+                  ? pathname === '/dashboard'
+                  : pathname.startsWith(item.href)
+              const Icon = item.icon
 
-      {/* Section Entreprise en cours */}
-      {enterpriseId && (
-        <>
-          <Separator />
-          <div className="flex-1 p-4">
-            <p className="mb-2 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-              Entreprise en cours
-            </p>
-
-            {/* Nom de l'entreprise */}
-            <div className="mb-2 px-3 py-2">
-              {loading ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Chargement...</span>
-                </div>
-              ) : (
-                <p
-                  className="truncate font-medium text-sm"
-                  title={enterprise?.raison_sociale || 'Sans nom'}
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all duration-200',
+                    isActive
+                      ? 'bg-brand text-white shadow-brand'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
                 >
-                  {enterprise?.raison_sociale || 'Sans nom'}
-                </p>
-              )}
-            </div>
+                  <Icon className="h-4 w-4" />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+      )}
 
-            {/* Liens de l'entreprise */}
+      {/* Navigation Comptable */}
+      {userType === 'comptable' && (
+        <>
+          <div className="p-4">
+            <p className="mb-2 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+              Navigation
+            </p>
             <nav className="space-y-1">
-              {enterpriseLinks.map((item) => {
-                // Vérifie si le pathname correspond au segment de route
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
-                const Icon = item.icon
-
-                if (item.disabled) {
-                  return (
-                    <div
-                      key={item.name}
-                      className="flex cursor-not-allowed items-center justify-between gap-2 rounded-md px-3 py-2 text-muted-foreground/50 text-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4" />
-                        {item.name}
-                      </div>
-                      {item.badge && (
-                        <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </div>
-                  )
-                }
-
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.name}
-                  </Link>
-                )
-              })}
+              <Link
+                href="/dashboard"
+                onClick={onNavigate}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all duration-200',
+                  pathname === '/dashboard'
+                    ? 'bg-brand text-white shadow-brand'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Tableau de bord
+              </Link>
+              <Link
+                href="/enterprise"
+                onClick={onNavigate}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all duration-200',
+                  pathname === '/enterprise' || (pathname.startsWith('/enterprise/') && !enterpriseId)
+                    ? 'bg-brand text-white shadow-brand'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Building className="h-4 w-4" />
+                Entreprises
+              </Link>
             </nav>
           </div>
+
+          {/* Section Entreprise en cours (comptable) */}
+          {enterpriseId && (
+            <>
+              <Separator />
+              <div className="flex-1 overflow-auto p-4">
+                <p className="mb-2 px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                  Entreprise en cours
+                </p>
+
+                {/* Nom de l'entreprise */}
+                <div className="mb-2 px-3 py-2">
+                  {loading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Chargement...</span>
+                    </div>
+                  ) : (
+                    <p
+                      className="truncate font-semibold text-sm text-foreground"
+                      title={enterprise?.raison_sociale || 'Sans nom'}
+                    >
+                      {enterprise?.raison_sociale || 'Sans nom'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Liens de l'entreprise */}
+                <nav className="space-y-1">
+                  {enterpriseLinks.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                    const Icon = item.icon
+
+                    if (item.disabled) {
+                      return (
+                        <div
+                          key={item.name}
+                          className="flex cursor-not-allowed items-center justify-between gap-2 rounded-lg px-3 py-2 text-muted-foreground/50 text-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="h-4 w-4" />
+                            {item.name}
+                          </div>
+                          {item.badge && (
+                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 font-medium text-sm transition-all duration-200',
+                          isActive
+                            ? 'bg-brand text-white shadow-brand'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.name}
+                      </Link>
+                    )
+                  })}
+                </nav>
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -229,8 +312,8 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
         {/* User section */}
         <div className="p-4">
           <div className="mb-3 flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-muted text-muted-foreground text-sm">
+            <Avatar className="h-9 w-9 ring-2 ring-border">
+              <AvatarFallback className="bg-brand/10 text-brand text-sm font-medium">
                 {getInitials(email)}
               </AvatarFallback>
             </Avatar>
@@ -239,7 +322,13 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
             </div>
             <ThemeToggle />
           </div>
-          <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900 transition-colors"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
             Déconnexion
           </Button>
         </div>
@@ -248,13 +337,13 @@ function SidebarContent({ email, onNavigate }: SidebarContentProps) {
   )
 }
 
-export function Sidebar({ email }: SidebarProps) {
+export function Sidebar({ email, userType }: SidebarProps) {
   const [open, setOpen] = useState(false)
 
   return (
     <>
       {/* Mobile header */}
-      <header className="fixed top-0 right-0 left-0 z-40 border-b bg-background px-4 py-3 lg:hidden">
+      <header className="fixed top-0 right-0 left-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-3 lg:hidden">
         <div className="flex items-center justify-between">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -270,19 +359,28 @@ export function Sidebar({ email }: SidebarProps) {
                 <span className="ml-2">Menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-72 p-0">
               <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
-              <SidebarContent email={email} onNavigate={() => setOpen(false)} />
+              <SidebarContent email={email} userType={userType} onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
-          <span className="font-semibold">Défaillantomètre</span>
+          <Link href="/dashboard" className="flex items-center">
+            <Image
+              src="/bilantia_logo.svg"
+              alt="BILANTIA"
+              width={120}
+              height={35}
+              className="h-7 w-auto"
+              priority
+            />
+          </Link>
           <div className="w-20" /> {/* Spacer for centering */}
         </div>
       </header>
 
       {/* Desktop sidebar */}
       <aside className="hidden border-r bg-card lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <SidebarContent email={email} />
+        <SidebarContent email={email} userType={userType} />
       </aside>
     </>
   )

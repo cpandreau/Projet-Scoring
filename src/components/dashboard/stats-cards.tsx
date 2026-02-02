@@ -1,5 +1,4 @@
 import { BarChart3, Building, FileText, TrendingUp } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { GlobalStats } from '@/repositories/stats.repository'
 
@@ -17,16 +16,24 @@ interface StatCardProps {
 
 function StatCard({ icon, value, label, sublabel, className }: StatCardProps) {
   return (
-    <Card className={cn('py-4', className)}>
-      <CardContent className="flex items-center gap-4">
-        <div className="rounded-lg bg-primary/10 p-3 text-primary">{icon}</div>
+    <div
+      className={cn(
+        'bg-card border border-border rounded-xl p-5',
+        'transition-all duration-200',
+        'hover:shadow-lg hover:shadow-brand/5 hover:-translate-y-0.5',
+        'hover:border-brand/20',
+        className
+      )}
+    >
+      <div className="flex items-center gap-4">
+        <div className="p-2.5 rounded-lg bg-brand/10 text-brand">{icon}</div>
         <div>
-          <p className="font-bold text-2xl tabular-nums">{value}</p>
+          <p className="font-bold text-2xl font-mono tabular-nums">{value}</p>
           <p className="text-muted-foreground text-sm">{label}</p>
           {sublabel && <p className="text-muted-foreground/70 text-xs">{sublabel}</p>}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
